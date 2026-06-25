@@ -363,9 +363,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d7c57c2cb7df7c439dd607636e1bbdb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelEditor
-  gridSize: 25
-  levelIndex: 19
-  targetArrowCount: 12
+  gridSize: 10
+  levelIndex: 20
+  targetArrowCount: 10
   minArrowLength: 2
   maxArrowLength: 16
   lives: 3
@@ -389,7 +389,7 @@ MonoBehaviour:
   useRandomSeed: 0
   randomSeed: 12345
   maxSearchIterations: 250000
-  maxGenerationSeconds: 20
+  maxGenerationSeconds: 60
   maxCandidatesPerSearchState: 512
 --- !u!4 &2137619112
 Transform:

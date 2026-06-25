@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class LevelGenerator : MonoBehaviour
 {
+    public static LevelGenerator ActiveInstance { get; private set; }
+
     [SerializeField] private Tile tilePrefab;
     [SerializeField] private Transform levelRoot;
     [SerializeField] private bool generateLevelOnStart = true;
@@ -51,20 +53,32 @@ public class LevelGenerator : MonoBehaviour
     private Vector2 gridOrigin;
     private Dictionary<Vector2Int, ArrowVisualCellData> arrowVisualDataByPosition = new Dictionary<Vector2Int, ArrowVisualCellData>();
     private Material lineMaterial;
+    private int currentLevelIndex;
 
     private void Start()
     {
+        ActiveInstance = this;
         EnsureDefaultArrowPalette();
+        currentLevelIndex = Mathf.Max(1, startingLevelIndex);
 
         if (generateLevelOnStart)
         {
-            GenerateLevelFromResources(startingLevelIndex);
+            GenerateLevelFromResources(currentLevelIndex);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (ActiveInstance == this)
+        {
+            ActiveInstance = null;
         }
     }
 
     public void GenerateLevelFromResources(int levelIndex)
     {
-        string resourcePath = $"{NormalizeResourceFolder(resourcesLevelsFolder)}/Level_{levelIndex}";
+        int normalizedLevelIndex = Mathf.Max(1, levelIndex);
+        string resourcePath = $"{NormalizeResourceFolder(resourcesLevelsFolder)}/Level_{normalizedLevelIndex}";
         TextAsset levelJson = Resources.Load<TextAsset>(resourcePath);
 
         if (levelJson == null)
@@ -80,12 +94,28 @@ public class LevelGenerator : MonoBehaviour
             return;
         }
 
+        if (!levelData.Validate())
+        {
+            Debug.LogError($"LevelGenerator found invalid level data in Resources/{resourcePath}.json.");
+            return;
+        }
+
         GenerateLevel(levelData);
+        currentLevelIndex = normalizedLevelIndex;
+    }
+
+    public void GenerateNextLevel()
+    {
+        GenerateLevelFromResources(currentLevelIndex + 1);
+    }
+
+    public void GeneratePreviousLevel()
+    {
+        GenerateLevelFromResources(Mathf.Max(1, currentLevelIndex - 1));
     }
 
     public void GenerateLevel(LevelData levelData)
     {
-        ClearLevel();
         EnsureDefaultArrowPalette();
 
         if (levelData == null)
@@ -99,6 +129,8 @@ public class LevelGenerator : MonoBehaviour
             Debug.LogError("LevelGenerator.GenerateLevel failed: LevelData is invalid.");
             return;
         }
+
+        ClearLevel();
 
         if (levelRoot == null)
         {

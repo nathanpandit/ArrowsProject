@@ -48,6 +48,11 @@ public class InputManager : MonoBehaviour
 
     private void RouteGameplayInput()
     {
+        if (HandleGameplayLevelShortcuts())
+        {
+            return;
+        }
+
         bool handledPrimaryInput = false;
 
         if (WasPrimaryTouchPressedThisFrame())
@@ -60,6 +65,35 @@ public class InputManager : MonoBehaviour
         {
             GameManager.HandlePrimaryInput(ScreenToWorld(Mouse.current.position.ReadValue()));
         }
+    }
+
+    private bool HandleGameplayLevelShortcuts()
+    {
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null)
+        {
+            return false;
+        }
+
+        LevelGenerator levelGenerator = LevelGenerator.ActiveInstance;
+        if (levelGenerator == null)
+        {
+            return false;
+        }
+
+        if (keyboard.nKey.wasPressedThisFrame)
+        {
+            levelGenerator.GenerateNextLevel();
+            return true;
+        }
+
+        if (keyboard.pKey.wasPressedThisFrame)
+        {
+            levelGenerator.GeneratePreviousLevel();
+            return true;
+        }
+
+        return false;
     }
 
     private void RouteLevelEditorInput()

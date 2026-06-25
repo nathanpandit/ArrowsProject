@@ -364,7 +364,7 @@ MonoBehaviour:
   tilePrefab: {fileID: 417003067280566668, guid: a0e6e38a428914449a59fc01e81e1aa1, type: 3}
   levelRoot: {fileID: 671833364}
   generateLevelOnStart: 1
-  startingLevelIndex: 18
+  startingLevelIndex: 19
   resourcesLevelsFolder: Levels
   cellSize: 1
   runtimeTileFillScale: 1
