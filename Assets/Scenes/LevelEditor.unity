@@ -363,9 +363,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d7c57c2cb7df7c439dd607636e1bbdb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelEditor
-  gridSize: 10
-  levelIndex: 20
-  targetArrowCount: 10
+  gridSize: 5
+  levelIndex: 29
+  minArrowCount: 10
+  maxArrowCount: 30
   minArrowLength: 2
   maxArrowLength: 16
   lives: 3

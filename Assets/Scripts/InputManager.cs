@@ -126,9 +126,19 @@ public class InputManager : MonoBehaviour
         }
 
         Keyboard keyboard = Keyboard.current;
+        if (keyboard != null && keyboard.gKey.wasPressedThisFrame)
+        {
+            levelEditor.HandleGenerateShortcut();
+        }
+
         if (keyboard != null && keyboard.sKey.wasPressedThisFrame)
         {
-            levelEditor.HandleSaveGenerateShortcut();
+            levelEditor.HandleSaveShortcut();
+        }
+
+        if (keyboard != null && keyboard.rKey.wasPressedThisFrame)
+        {
+            levelEditor.HandleResetDesignedLevelShortcut();
         }
 
         Vector2 panDirection = Vector2.zero;

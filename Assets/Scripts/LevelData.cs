@@ -22,10 +22,13 @@ public enum ArrowDirection
 public class LevelData
 {
     public int levelIndex;
+    public int levelVariantIndex;
     public int gridSize;
     public int width;
     public int height;
     public int targetArrowCount;
+    public int minArrowCount;
+    public int maxArrowCount;
     public int minArrowLength;
     public int maxArrowLength;
     public int lives;
@@ -86,6 +89,24 @@ public class LevelData
         if (targetArrowCount < 0)
         {
             Debug.LogError("LevelData validation failed: targetArrowCount cannot be negative.");
+            isValid = false;
+        }
+
+        if (levelVariantIndex < 0)
+        {
+            Debug.LogError("LevelData validation failed: levelVariantIndex cannot be negative.");
+            isValid = false;
+        }
+
+        if (minArrowCount < 0 || maxArrowCount < 0)
+        {
+            Debug.LogError("LevelData validation failed: arrow count range cannot be negative.");
+            isValid = false;
+        }
+
+        if (maxArrowCount > 0 && minArrowCount > maxArrowCount)
+        {
+            Debug.LogError("LevelData validation failed: minArrowCount cannot be greater than maxArrowCount.");
             isValid = false;
         }
 

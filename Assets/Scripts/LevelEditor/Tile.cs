@@ -9,6 +9,7 @@ public class Tile : MonoBehaviour
     [SerializeField] private Transform arrowDirectionTransform;
 
     private static Sprite defaultSprite;
+    private static Sprite defaultArrowTipMarkerSprite;
     private static Material generatedArrowOverlayMaterial;
     private VertexData vertexData;
 
@@ -67,7 +68,7 @@ public class Tile : MonoBehaviour
     {
         EnsureReferences();
         spriteRenderer.color = color;
-        HideArrowOverlay();
+        ShowArrowTipMarker(color, direction);
 
         if (arrowDirectionTransform != null)
         {
@@ -244,6 +245,78 @@ public class Tile : MonoBehaviour
             texture.width);
 
         return defaultSprite;
+    }
+
+    private void ShowArrowTipMarker(Color backgroundColor, ArrowDirection direction)
+    {
+        EnsureArrowRenderer();
+        arrowSpriteRenderer.gameObject.SetActive(true);
+        arrowSpriteRenderer.sprite = GetDefaultArrowTipMarkerSprite();
+        arrowSpriteRenderer.color = GetContrastingMarkerColor(backgroundColor);
+        arrowSpriteRenderer.transform.localPosition = new Vector3(0f, 0f, -0.02f);
+        arrowSpriteRenderer.transform.localRotation = DirectionToRotation(direction);
+        arrowSpriteRenderer.transform.localScale = Vector3.one * 0.72f;
+    }
+
+    private static Sprite GetDefaultArrowTipMarkerSprite()
+    {
+        if (defaultArrowTipMarkerSprite != null)
+        {
+            return defaultArrowTipMarkerSprite;
+        }
+
+        const int size = 64;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp
+        };
+
+        Color clear = new Color(1f, 1f, 1f, 0f);
+        Color solid = Color.white;
+        Color[] pixels = new Color[size * size];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = clear;
+        }
+
+        for (int y = 8; y <= 40; y++)
+        {
+            for (int x = 29; x <= 35; x++)
+            {
+                pixels[y * size + x] = solid;
+            }
+        }
+
+        for (int y = 32; y <= 58; y++)
+        {
+            float t = (y - 32f) / 26f;
+            int halfWidth = Mathf.RoundToInt(Mathf.Lerp(18f, 1f, t));
+            for (int x = 32 - halfWidth; x <= 32 + halfWidth; x++)
+            {
+                if (x >= 0 && x < size)
+                {
+                    pixels[y * size + x] = solid;
+                }
+            }
+        }
+
+        texture.SetPixels(pixels);
+        texture.Apply();
+
+        defaultArrowTipMarkerSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, size, size),
+            new Vector2(0.5f, 0.5f),
+            size);
+
+        return defaultArrowTipMarkerSprite;
+    }
+
+    private static Color GetContrastingMarkerColor(Color backgroundColor)
+    {
+        float luminance = backgroundColor.r * 0.299f + backgroundColor.g * 0.587f + backgroundColor.b * 0.114f;
+        return luminance > 0.58f ? Color.black : Color.white;
     }
 
     private static Quaternion DirectionToRotation(ArrowDirection direction)

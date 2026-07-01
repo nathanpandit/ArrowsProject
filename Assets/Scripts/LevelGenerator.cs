@@ -9,6 +9,7 @@ public class LevelGenerator : MonoBehaviour
     [SerializeField] private Transform levelRoot;
     [SerializeField] private bool generateLevelOnStart = true;
     [SerializeField] private int startingLevelIndex = 1;
+    [SerializeField] private int startingLevelVariantIndex = 1;
     [SerializeField] private string resourcesLevelsFolder = "Levels";
     [SerializeField] private float cellSize = 1f;
     [SerializeField] private float runtimeTileFillScale = 1f;
@@ -54,16 +55,19 @@ public class LevelGenerator : MonoBehaviour
     private Dictionary<Vector2Int, ArrowVisualCellData> arrowVisualDataByPosition = new Dictionary<Vector2Int, ArrowVisualCellData>();
     private Material lineMaterial;
     private int currentLevelIndex;
+    private int currentLevelVariantIndex;
+    private const int MaxLevelVariantScan = 999;
 
     private void Start()
     {
         ActiveInstance = this;
         EnsureDefaultArrowPalette();
         currentLevelIndex = Mathf.Max(1, startingLevelIndex);
+        currentLevelVariantIndex = Mathf.Max(1, startingLevelVariantIndex);
 
         if (generateLevelOnStart)
         {
-            GenerateLevelFromResources(currentLevelIndex);
+            GenerateLevelFromResources(currentLevelIndex, currentLevelVariantIndex);
         }
     }
 
@@ -77,41 +81,93 @@ public class LevelGenerator : MonoBehaviour
 
     public void GenerateLevelFromResources(int levelIndex)
     {
+        GenerateLevelFromResources(levelIndex, 1);
+    }
+
+    public void GenerateLevelFromResources(int levelIndex, int levelVariantIndex)
+    {
         int normalizedLevelIndex = Mathf.Max(1, levelIndex);
-        string resourcePath = $"{NormalizeResourceFolder(resourcesLevelsFolder)}/Level_{normalizedLevelIndex}";
+        int normalizedVariantIndex = Mathf.Max(1, levelVariantIndex);
+        string resourcePath = BuildVariantResourcePath(normalizedLevelIndex, normalizedVariantIndex);
+
+        if (!TryGenerateLevelFromResourcePath(resourcePath, normalizedLevelIndex, normalizedVariantIndex))
+        {
+            Debug.LogError($"LevelGenerator could not load Resources/{resourcePath}.json.");
+        }
+    }
+
+    public void GenerateNextLevel()
+    {
+        int nextVariantIndex = currentLevelVariantIndex + 1;
+        if (DoesLevelResourceExist(currentLevelIndex, nextVariantIndex))
+        {
+            GenerateLevelFromResources(currentLevelIndex, nextVariantIndex);
+            return;
+        }
+
+        GenerateLevelFromResources(currentLevelIndex + 1, 1);
+    }
+
+    public void GeneratePreviousLevel()
+    {
+        if (currentLevelVariantIndex > 1)
+        {
+            GenerateLevelFromResources(currentLevelIndex, currentLevelVariantIndex - 1);
+            return;
+        }
+
+        int previousLevelIndex = Mathf.Max(1, currentLevelIndex - 1);
+        int previousVariantIndex = FindHighestExistingVariantIndex(previousLevelIndex);
+        GenerateLevelFromResources(previousLevelIndex, Mathf.Max(1, previousVariantIndex));
+    }
+
+    private bool TryGenerateLevelFromResourcePath(string resourcePath, int levelIndex, int levelVariantIndex)
+    {
         TextAsset levelJson = Resources.Load<TextAsset>(resourcePath);
 
         if (levelJson == null)
         {
-            Debug.LogError($"LevelGenerator could not load Resources/{resourcePath}.json.");
-            return;
+            return false;
         }
 
         LevelData levelData = JsonUtility.FromJson<LevelData>(levelJson.text);
         if (levelData == null)
         {
             Debug.LogError($"LevelGenerator failed to deserialize Resources/{resourcePath}.json.");
-            return;
+            return false;
         }
 
         if (!levelData.Validate())
         {
             Debug.LogError($"LevelGenerator found invalid level data in Resources/{resourcePath}.json.");
-            return;
+            return false;
         }
 
         GenerateLevel(levelData);
-        currentLevelIndex = normalizedLevelIndex;
+        currentLevelIndex = levelIndex;
+        currentLevelVariantIndex = levelVariantIndex;
+        return true;
     }
 
-    public void GenerateNextLevel()
+    private bool DoesLevelResourceExist(int levelIndex, int levelVariantIndex)
     {
-        GenerateLevelFromResources(currentLevelIndex + 1);
+        return Resources.Load<TextAsset>(BuildVariantResourcePath(levelIndex, levelVariantIndex)) != null;
     }
 
-    public void GeneratePreviousLevel()
+    private int FindHighestExistingVariantIndex(int levelIndex)
     {
-        GenerateLevelFromResources(Mathf.Max(1, currentLevelIndex - 1));
+        int highestVariantIndex = 0;
+        for (int variantIndex = 1; variantIndex <= MaxLevelVariantScan; variantIndex++)
+        {
+            if (!DoesLevelResourceExist(levelIndex, variantIndex))
+            {
+                break;
+            }
+
+            highestVariantIndex = variantIndex;
+        }
+
+        return highestVariantIndex;
     }
 
     public void GenerateLevel(LevelData levelData)
@@ -797,6 +853,11 @@ public class LevelGenerator : MonoBehaviour
         }
 
         return folder.Trim().Trim('/').Trim('\\').Replace("\\", "/");
+    }
+
+    private string BuildVariantResourcePath(int levelIndex, int levelVariantIndex)
+    {
+        return $"{NormalizeResourceFolder(resourcesLevelsFolder)}/Level_{levelIndex}_{levelVariantIndex}";
     }
 
     private enum ArrowVisualPieceType
