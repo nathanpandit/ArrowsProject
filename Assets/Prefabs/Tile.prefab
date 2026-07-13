@@ -105,5 +105,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Tile
   spriteRenderer: {fileID: 0}
+  arrowSpriteRenderer: {fileID: 0}
+  arrowOverlayMaterial: {fileID: 0}
   tileCollider: {fileID: 0}
   arrowDirectionTransform: {fileID: 0}

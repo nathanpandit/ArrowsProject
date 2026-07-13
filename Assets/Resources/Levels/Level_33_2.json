@@ -1,0 +1,2543 @@
+{
+    "levelIndex": 33,
+    "levelVariantIndex": 2,
+    "gridSize": 9,
+    "width": 9,
+    "height": 9,
+    "targetArrowCount": 10,
+    "minArrowCount": 10,
+    "maxArrowCount": 40,
+    "minArrowLength": 2,
+    "maxArrowLength": 20,
+    "lives": 3,
+    "vertices": [
+        {
+            "vertexId": 0,
+            "x": 0,
+            "y": 0,
+            "contentType": 2,
+            "arrowId": 10,
+            "tipDirection": 2,
+            "neighborVertexIds": [
+                1,
+                9
+            ]
+        },
+        {
+            "vertexId": 1,
+            "x": 1,
+            "y": 0,
+            "contentType": 1,
+            "arrowId": 9,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                2,
+                0,
+                10
+            ]
+        },
+        {
+            "vertexId": 2,
+            "x": 2,
+            "y": 0,
+            "contentType": 1,
+            "arrowId": 9,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                3,
+                1,
+                11
+            ]
+        },
+        {
+            "vertexId": 3,
+            "x": 3,
+            "y": 0,
+            "contentType": 1,
+            "arrowId": 9,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                4,
+                2,
+                12
+            ]
+        },
+        {
+            "vertexId": 4,
+            "x": 4,
+            "y": 0,
+            "contentType": 1,
+            "arrowId": 6,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                5,
+                3,
+                13
+            ]
+        },
+        {
+            "vertexId": 5,
+            "x": 5,
+            "y": 0,
+            "contentType": 1,
+            "arrowId": 6,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                6,
+                4,
+                14
+            ]
+        },
+        {
+            "vertexId": 6,
+            "x": 6,
+            "y": 0,
+            "contentType": 1,
+            "arrowId": 5,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                7,
+                5,
+                15
+            ]
+        },
+        {
+            "vertexId": 7,
+            "x": 7,
+            "y": 0,
+            "contentType": 1,
+            "arrowId": 5,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                8,
+                6,
+                16
+            ]
+        },
+        {
+            "vertexId": 8,
+            "x": 8,
+            "y": 0,
+            "contentType": 2,
+            "arrowId": 5,
+            "tipDirection": 4,
+            "neighborVertexIds": [
+                7,
+                17
+            ]
+        },
+        {
+            "vertexId": 9,
+            "x": 0,
+            "y": 1,
+            "contentType": 1,
+            "arrowId": 10,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                10,
+                18,
+                0
+            ]
+        },
+        {
+            "vertexId": 10,
+            "x": 1,
+            "y": 1,
+            "contentType": 1,
+            "arrowId": 9,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                11,
+                9,
+                19,
+                1
+            ]
+        },
+        {
+            "vertexId": 11,
+            "x": 2,
+            "y": 1,
+            "contentType": 1,
+            "arrowId": 9,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                12,
+                10,
+                20,
+                2
+            ]
+        },
+        {
+            "vertexId": 12,
+            "x": 3,
+            "y": 1,
+            "contentType": 1,
+            "arrowId": 9,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                13,
+                11,
+                21,
+                3
+            ]
+        },
+        {
+            "vertexId": 13,
+            "x": 4,
+            "y": 1,
+            "contentType": 1,
+            "arrowId": 6,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                14,
+                12,
+                22,
+                4
+            ]
+        },
+        {
+            "vertexId": 14,
+            "x": 5,
+            "y": 1,
+            "contentType": 1,
+            "arrowId": 6,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                15,
+                13,
+                23,
+                5
+            ]
+        },
+        {
+            "vertexId": 15,
+            "x": 6,
+            "y": 1,
+            "contentType": 1,
+            "arrowId": 5,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                16,
+                14,
+                24,
+                6
+            ]
+        },
+        {
+            "vertexId": 16,
+            "x": 7,
+            "y": 1,
+            "contentType": 1,
+            "arrowId": 5,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                17,
+                15,
+                25,
+                7
+            ]
+        },
+        {
+            "vertexId": 17,
+            "x": 8,
+            "y": 1,
+            "contentType": 2,
+            "arrowId": 4,
+            "tipDirection": 2,
+            "neighborVertexIds": [
+                16,
+                26,
+                8
+            ]
+        },
+        {
+            "vertexId": 18,
+            "x": 0,
+            "y": 2,
+            "contentType": 1,
+            "arrowId": 10,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                19,
+                27,
+                9
+            ]
+        },
+        {
+            "vertexId": 19,
+            "x": 1,
+            "y": 2,
+            "contentType": 2,
+            "arrowId": 9,
+            "tipDirection": 3,
+            "neighborVertexIds": [
+                20,
+                18,
+                28,
+                10
+            ]
+        },
+        {
+            "vertexId": 20,
+            "x": 2,
+            "y": 2,
+            "contentType": 1,
+            "arrowId": 9,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                21,
+                19,
+                29,
+                11
+            ]
+        },
+        {
+            "vertexId": 21,
+            "x": 3,
+            "y": 2,
+            "contentType": 1,
+            "arrowId": 9,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                22,
+                20,
+                30,
+                12
+            ]
+        },
+        {
+            "vertexId": 22,
+            "x": 4,
+            "y": 2,
+            "contentType": 1,
+            "arrowId": 6,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                23,
+                21,
+                31,
+                13
+            ]
+        },
+        {
+            "vertexId": 23,
+            "x": 5,
+            "y": 2,
+            "contentType": 1,
+            "arrowId": 6,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                24,
+                22,
+                32,
+                14
+            ]
+        },
+        {
+            "vertexId": 24,
+            "x": 6,
+            "y": 2,
+            "contentType": 1,
+            "arrowId": 5,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                25,
+                23,
+                33,
+                15
+            ]
+        },
+        {
+            "vertexId": 25,
+            "x": 7,
+            "y": 2,
+            "contentType": 1,
+            "arrowId": 5,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                26,
+                24,
+                34,
+                16
+            ]
+        },
+        {
+            "vertexId": 26,
+            "x": 8,
+            "y": 2,
+            "contentType": 1,
+            "arrowId": 4,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                25,
+                35,
+                17
+            ]
+        },
+        {
+            "vertexId": 27,
+            "x": 0,
+            "y": 3,
+            "contentType": 1,
+            "arrowId": 10,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                28,
+                36,
+                18
+            ]
+        },
+        {
+            "vertexId": 28,
+            "x": 1,
+            "y": 3,
+            "contentType": 1,
+            "arrowId": 10,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                29,
+                27,
+                37,
+                19
+            ]
+        },
+        {
+            "vertexId": 29,
+            "x": 2,
+            "y": 3,
+            "contentType": 1,
+            "arrowId": 10,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                30,
+                28,
+                38,
+                20
+            ]
+        },
+        {
+            "vertexId": 30,
+            "x": 3,
+            "y": 3,
+            "contentType": 1,
+            "arrowId": 10,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                31,
+                29,
+                39,
+                21
+            ]
+        },
+        {
+            "vertexId": 31,
+            "x": 4,
+            "y": 3,
+            "contentType": 1,
+            "arrowId": 6,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                32,
+                30,
+                40,
+                22
+            ]
+        },
+        {
+            "vertexId": 32,
+            "x": 5,
+            "y": 3,
+            "contentType": 2,
+            "arrowId": 6,
+            "tipDirection": 4,
+            "neighborVertexIds": [
+                33,
+                31,
+                41,
+                23
+            ]
+        },
+        {
+            "vertexId": 33,
+            "x": 6,
+            "y": 3,
+            "contentType": 1,
+            "arrowId": 4,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                34,
+                32,
+                42,
+                24
+            ]
+        },
+        {
+            "vertexId": 34,
+            "x": 7,
+            "y": 3,
+            "contentType": 1,
+            "arrowId": 4,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                35,
+                33,
+                43,
+                25
+            ]
+        },
+        {
+            "vertexId": 35,
+            "x": 8,
+            "y": 3,
+            "contentType": 1,
+            "arrowId": 4,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                34,
+                44,
+                26
+            ]
+        },
+        {
+            "vertexId": 36,
+            "x": 0,
+            "y": 4,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                37,
+                45,
+                27
+            ]
+        },
+        {
+            "vertexId": 37,
+            "x": 1,
+            "y": 4,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                38,
+                36,
+                46,
+                28
+            ]
+        },
+        {
+            "vertexId": 38,
+            "x": 2,
+            "y": 4,
+            "contentType": 1,
+            "arrowId": 8,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                39,
+                37,
+                47,
+                29
+            ]
+        },
+        {
+            "vertexId": 39,
+            "x": 3,
+            "y": 4,
+            "contentType": 1,
+            "arrowId": 8,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                40,
+                38,
+                48,
+                30
+            ]
+        },
+        {
+            "vertexId": 40,
+            "x": 4,
+            "y": 4,
+            "contentType": 1,
+            "arrowId": 8,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                41,
+                39,
+                49,
+                31
+            ]
+        },
+        {
+            "vertexId": 41,
+            "x": 5,
+            "y": 4,
+            "contentType": 1,
+            "arrowId": 8,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                42,
+                40,
+                50,
+                32
+            ]
+        },
+        {
+            "vertexId": 42,
+            "x": 6,
+            "y": 4,
+            "contentType": 2,
+            "arrowId": 8,
+            "tipDirection": 2,
+            "neighborVertexIds": [
+                43,
+                41,
+                51,
+                33
+            ]
+        },
+        {
+            "vertexId": 43,
+            "x": 7,
+            "y": 4,
+            "contentType": 1,
+            "arrowId": 4,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                44,
+                42,
+                52,
+                34
+            ]
+        },
+        {
+            "vertexId": 44,
+            "x": 8,
+            "y": 4,
+            "contentType": 1,
+            "arrowId": 4,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                43,
+                53,
+                35
+            ]
+        },
+        {
+            "vertexId": 45,
+            "x": 0,
+            "y": 5,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                46,
+                54,
+                36
+            ]
+        },
+        {
+            "vertexId": 46,
+            "x": 1,
+            "y": 5,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                47,
+                45,
+                55,
+                37
+            ]
+        },
+        {
+            "vertexId": 47,
+            "x": 2,
+            "y": 5,
+            "contentType": 1,
+            "arrowId": 7,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                48,
+                46,
+                56,
+                38
+            ]
+        },
+        {
+            "vertexId": 48,
+            "x": 3,
+            "y": 5,
+            "contentType": 1,
+            "arrowId": 7,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                49,
+                47,
+                57,
+                39
+            ]
+        },
+        {
+            "vertexId": 49,
+            "x": 4,
+            "y": 5,
+            "contentType": 1,
+            "arrowId": 7,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                50,
+                48,
+                58,
+                40
+            ]
+        },
+        {
+            "vertexId": 50,
+            "x": 5,
+            "y": 5,
+            "contentType": 1,
+            "arrowId": 8,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                51,
+                49,
+                59,
+                41
+            ]
+        },
+        {
+            "vertexId": 51,
+            "x": 6,
+            "y": 5,
+            "contentType": 1,
+            "arrowId": 8,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                52,
+                50,
+                60,
+                42
+            ]
+        },
+        {
+            "vertexId": 52,
+            "x": 7,
+            "y": 5,
+            "contentType": 1,
+            "arrowId": 4,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                53,
+                51,
+                61,
+                43
+            ]
+        },
+        {
+            "vertexId": 53,
+            "x": 8,
+            "y": 5,
+            "contentType": 1,
+            "arrowId": 4,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                52,
+                62,
+                44
+            ]
+        },
+        {
+            "vertexId": 54,
+            "x": 0,
+            "y": 6,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                55,
+                63,
+                45
+            ]
+        },
+        {
+            "vertexId": 55,
+            "x": 1,
+            "y": 6,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                56,
+                54,
+                64,
+                46
+            ]
+        },
+        {
+            "vertexId": 56,
+            "x": 2,
+            "y": 6,
+            "contentType": 2,
+            "arrowId": 1,
+            "tipDirection": 4,
+            "neighborVertexIds": [
+                57,
+                55,
+                65,
+                47
+            ]
+        },
+        {
+            "vertexId": 57,
+            "x": 3,
+            "y": 6,
+            "contentType": 2,
+            "arrowId": 2,
+            "tipDirection": 2,
+            "neighborVertexIds": [
+                58,
+                56,
+                66,
+                48
+            ]
+        },
+        {
+            "vertexId": 58,
+            "x": 4,
+            "y": 6,
+            "contentType": 1,
+            "arrowId": 7,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                59,
+                57,
+                67,
+                49
+            ]
+        },
+        {
+            "vertexId": 59,
+            "x": 5,
+            "y": 6,
+            "contentType": 2,
+            "arrowId": 7,
+            "tipDirection": 2,
+            "neighborVertexIds": [
+                60,
+                58,
+                68,
+                50
+            ]
+        },
+        {
+            "vertexId": 60,
+            "x": 6,
+            "y": 6,
+            "contentType": 1,
+            "arrowId": 3,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                61,
+                59,
+                69,
+                51
+            ]
+        },
+        {
+            "vertexId": 61,
+            "x": 7,
+            "y": 6,
+            "contentType": 1,
+            "arrowId": 3,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                62,
+                60,
+                70,
+                52
+            ]
+        },
+        {
+            "vertexId": 62,
+            "x": 8,
+            "y": 6,
+            "contentType": 2,
+            "arrowId": 3,
+            "tipDirection": 2,
+            "neighborVertexIds": [
+                61,
+                71,
+                53
+            ]
+        },
+        {
+            "vertexId": 63,
+            "x": 0,
+            "y": 7,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                64,
+                72,
+                54
+            ]
+        },
+        {
+            "vertexId": 64,
+            "x": 1,
+            "y": 7,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                65,
+                63,
+                73,
+                55
+            ]
+        },
+        {
+            "vertexId": 65,
+            "x": 2,
+            "y": 7,
+            "contentType": 1,
+            "arrowId": 2,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                66,
+                64,
+                74,
+                56
+            ]
+        },
+        {
+            "vertexId": 66,
+            "x": 3,
+            "y": 7,
+            "contentType": 1,
+            "arrowId": 2,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                67,
+                65,
+                75,
+                57
+            ]
+        },
+        {
+            "vertexId": 67,
+            "x": 4,
+            "y": 7,
+            "contentType": 1,
+            "arrowId": 7,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                68,
+                66,
+                76,
+                58
+            ]
+        },
+        {
+            "vertexId": 68,
+            "x": 5,
+            "y": 7,
+            "contentType": 1,
+            "arrowId": 7,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                69,
+                67,
+                77,
+                59
+            ]
+        },
+        {
+            "vertexId": 69,
+            "x": 6,
+            "y": 7,
+            "contentType": 1,
+            "arrowId": 3,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                70,
+                68,
+                78,
+                60
+            ]
+        },
+        {
+            "vertexId": 70,
+            "x": 7,
+            "y": 7,
+            "contentType": 1,
+            "arrowId": 3,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                71,
+                69,
+                79,
+                61
+            ]
+        },
+        {
+            "vertexId": 71,
+            "x": 8,
+            "y": 7,
+            "contentType": 1,
+            "arrowId": 3,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                70,
+                80,
+                62
+            ]
+        },
+        {
+            "vertexId": 72,
+            "x": 0,
+            "y": 8,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                73,
+                63
+            ]
+        },
+        {
+            "vertexId": 73,
+            "x": 1,
+            "y": 8,
+            "contentType": 1,
+            "arrowId": 1,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                74,
+                72,
+                64
+            ]
+        },
+        {
+            "vertexId": 74,
+            "x": 2,
+            "y": 8,
+            "contentType": 1,
+            "arrowId": 2,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                75,
+                73,
+                65
+            ]
+        },
+        {
+            "vertexId": 75,
+            "x": 3,
+            "y": 8,
+            "contentType": 1,
+            "arrowId": 2,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                76,
+                74,
+                66
+            ]
+        },
+        {
+            "vertexId": 76,
+            "x": 4,
+            "y": 8,
+            "contentType": 1,
+            "arrowId": 2,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                77,
+                75,
+                67
+            ]
+        },
+        {
+            "vertexId": 77,
+            "x": 5,
+            "y": 8,
+            "contentType": 1,
+            "arrowId": 2,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                78,
+                76,
+                68
+            ]
+        },
+        {
+            "vertexId": 78,
+            "x": 6,
+            "y": 8,
+            "contentType": 1,
+            "arrowId": 2,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                79,
+                77,
+                69
+            ]
+        },
+        {
+            "vertexId": 79,
+            "x": 7,
+            "y": 8,
+            "contentType": 1,
+            "arrowId": 3,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                80,
+                78,
+                70
+            ]
+        },
+        {
+            "vertexId": 80,
+            "x": 8,
+            "y": 8,
+            "contentType": 1,
+            "arrowId": 3,
+            "tipDirection": 0,
+            "neighborVertexIds": [
+                79,
+                71
+            ]
+        }
+    ],
+    "edges": [
+        {
+            "fromVertexId": 0,
+            "toVertexId": 1
+        },
+        {
+            "fromVertexId": 0,
+            "toVertexId": 9
+        },
+        {
+            "fromVertexId": 1,
+            "toVertexId": 2
+        },
+        {
+            "fromVertexId": 1,
+            "toVertexId": 10
+        },
+        {
+            "fromVertexId": 2,
+            "toVertexId": 3
+        },
+        {
+            "fromVertexId": 2,
+            "toVertexId": 11
+        },
+        {
+            "fromVertexId": 3,
+            "toVertexId": 4
+        },
+        {
+            "fromVertexId": 3,
+            "toVertexId": 12
+        },
+        {
+            "fromVertexId": 4,
+            "toVertexId": 5
+        },
+        {
+            "fromVertexId": 4,
+            "toVertexId": 13
+        },
+        {
+            "fromVertexId": 5,
+            "toVertexId": 6
+        },
+        {
+            "fromVertexId": 5,
+            "toVertexId": 14
+        },
+        {
+            "fromVertexId": 6,
+            "toVertexId": 7
+        },
+        {
+            "fromVertexId": 6,
+            "toVertexId": 15
+        },
+        {
+            "fromVertexId": 7,
+            "toVertexId": 8
+        },
+        {
+            "fromVertexId": 7,
+            "toVertexId": 16
+        },
+        {
+            "fromVertexId": 8,
+            "toVertexId": 17
+        },
+        {
+            "fromVertexId": 9,
+            "toVertexId": 10
+        },
+        {
+            "fromVertexId": 9,
+            "toVertexId": 18
+        },
+        {
+            "fromVertexId": 10,
+            "toVertexId": 11
+        },
+        {
+            "fromVertexId": 10,
+            "toVertexId": 19
+        },
+        {
+            "fromVertexId": 11,
+            "toVertexId": 12
+        },
+        {
+            "fromVertexId": 11,
+            "toVertexId": 20
+        },
+        {
+            "fromVertexId": 12,
+            "toVertexId": 13
+        },
+        {
+            "fromVertexId": 12,
+            "toVertexId": 21
+        },
+        {
+            "fromVertexId": 13,
+            "toVertexId": 14
+        },
+        {
+            "fromVertexId": 13,
+            "toVertexId": 22
+        },
+        {
+            "fromVertexId": 14,
+            "toVertexId": 15
+        },
+        {
+            "fromVertexId": 14,
+            "toVertexId": 23
+        },
+        {
+            "fromVertexId": 15,
+            "toVertexId": 16
+        },
+        {
+            "fromVertexId": 15,
+            "toVertexId": 24
+        },
+        {
+            "fromVertexId": 16,
+            "toVertexId": 17
+        },
+        {
+            "fromVertexId": 16,
+            "toVertexId": 25
+        },
+        {
+            "fromVertexId": 17,
+            "toVertexId": 26
+        },
+        {
+            "fromVertexId": 18,
+            "toVertexId": 19
+        },
+        {
+            "fromVertexId": 18,
+            "toVertexId": 27
+        },
+        {
+            "fromVertexId": 19,
+            "toVertexId": 20
+        },
+        {
+            "fromVertexId": 19,
+            "toVertexId": 28
+        },
+        {
+            "fromVertexId": 20,
+            "toVertexId": 21
+        },
+        {
+            "fromVertexId": 20,
+            "toVertexId": 29
+        },
+        {
+            "fromVertexId": 21,
+            "toVertexId": 22
+        },
+        {
+            "fromVertexId": 21,
+            "toVertexId": 30
+        },
+        {
+            "fromVertexId": 22,
+            "toVertexId": 23
+        },
+        {
+            "fromVertexId": 22,
+            "toVertexId": 31
+        },
+        {
+            "fromVertexId": 23,
+            "toVertexId": 24
+        },
+        {
+            "fromVertexId": 23,
+            "toVertexId": 32
+        },
+        {
+            "fromVertexId": 24,
+            "toVertexId": 25
+        },
+        {
+            "fromVertexId": 24,
+            "toVertexId": 33
+        },
+        {
+            "fromVertexId": 25,
+            "toVertexId": 26
+        },
+        {
+            "fromVertexId": 25,
+            "toVertexId": 34
+        },
+        {
+            "fromVertexId": 26,
+            "toVertexId": 35
+        },
+        {
+            "fromVertexId": 27,
+            "toVertexId": 28
+        },
+        {
+            "fromVertexId": 27,
+            "toVertexId": 36
+        },
+        {
+            "fromVertexId": 28,
+            "toVertexId": 29
+        },
+        {
+            "fromVertexId": 28,
+            "toVertexId": 37
+        },
+        {
+            "fromVertexId": 29,
+            "toVertexId": 30
+        },
+        {
+            "fromVertexId": 29,
+            "toVertexId": 38
+        },
+        {
+            "fromVertexId": 30,
+            "toVertexId": 31
+        },
+        {
+            "fromVertexId": 30,
+            "toVertexId": 39
+        },
+        {
+            "fromVertexId": 31,
+            "toVertexId": 32
+        },
+        {
+            "fromVertexId": 31,
+            "toVertexId": 40
+        },
+        {
+            "fromVertexId": 32,
+            "toVertexId": 33
+        },
+        {
+            "fromVertexId": 32,
+            "toVertexId": 41
+        },
+        {
+            "fromVertexId": 33,
+            "toVertexId": 34
+        },
+        {
+            "fromVertexId": 33,
+            "toVertexId": 42
+        },
+        {
+            "fromVertexId": 34,
+            "toVertexId": 35
+        },
+        {
+            "fromVertexId": 34,
+            "toVertexId": 43
+        },
+        {
+            "fromVertexId": 35,
+            "toVertexId": 44
+        },
+        {
+            "fromVertexId": 36,
+            "toVertexId": 37
+        },
+        {
+            "fromVertexId": 36,
+            "toVertexId": 45
+        },
+        {
+            "fromVertexId": 37,
+            "toVertexId": 38
+        },
+        {
+            "fromVertexId": 37,
+            "toVertexId": 46
+        },
+        {
+            "fromVertexId": 38,
+            "toVertexId": 39
+        },
+        {
+            "fromVertexId": 38,
+            "toVertexId": 47
+        },
+        {
+            "fromVertexId": 39,
+            "toVertexId": 40
+        },
+        {
+            "fromVertexId": 39,
+            "toVertexId": 48
+        },
+        {
+            "fromVertexId": 40,
+            "toVertexId": 41
+        },
+        {
+            "fromVertexId": 40,
+            "toVertexId": 49
+        },
+        {
+            "fromVertexId": 41,
+            "toVertexId": 42
+        },
+        {
+            "fromVertexId": 41,
+            "toVertexId": 50
+        },
+        {
+            "fromVertexId": 42,
+            "toVertexId": 43
+        },
+        {
+            "fromVertexId": 42,
+            "toVertexId": 51
+        },
+        {
+            "fromVertexId": 43,
+            "toVertexId": 44
+        },
+        {
+            "fromVertexId": 43,
+            "toVertexId": 52
+        },
+        {
+            "fromVertexId": 44,
+            "toVertexId": 53
+        },
+        {
+            "fromVertexId": 45,
+            "toVertexId": 46
+        },
+        {
+            "fromVertexId": 45,
+            "toVertexId": 54
+        },
+        {
+            "fromVertexId": 46,
+            "toVertexId": 47
+        },
+        {
+            "fromVertexId": 46,
+            "toVertexId": 55
+        },
+        {
+            "fromVertexId": 47,
+            "toVertexId": 48
+        },
+        {
+            "fromVertexId": 47,
+            "toVertexId": 56
+        },
+        {
+            "fromVertexId": 48,
+            "toVertexId": 49
+        },
+        {
+            "fromVertexId": 48,
+            "toVertexId": 57
+        },
+        {
+            "fromVertexId": 49,
+            "toVertexId": 50
+        },
+        {
+            "fromVertexId": 49,
+            "toVertexId": 58
+        },
+        {
+            "fromVertexId": 50,
+            "toVertexId": 51
+        },
+        {
+            "fromVertexId": 50,
+            "toVertexId": 59
+        },
+        {
+            "fromVertexId": 51,
+            "toVertexId": 52
+        },
+        {
+            "fromVertexId": 51,
+            "toVertexId": 60
+        },
+        {
+            "fromVertexId": 52,
+            "toVertexId": 53
+        },
+        {
+            "fromVertexId": 52,
+            "toVertexId": 61
+        },
+        {
+            "fromVertexId": 53,
+            "toVertexId": 62
+        },
+        {
+            "fromVertexId": 54,
+            "toVertexId": 55
+        },
+        {
+            "fromVertexId": 54,
+            "toVertexId": 63
+        },
+        {
+            "fromVertexId": 55,
+            "toVertexId": 56
+        },
+        {
+            "fromVertexId": 55,
+            "toVertexId": 64
+        },
+        {
+            "fromVertexId": 56,
+            "toVertexId": 57
+        },
+        {
+            "fromVertexId": 56,
+            "toVertexId": 65
+        },
+        {
+            "fromVertexId": 57,
+            "toVertexId": 58
+        },
+        {
+            "fromVertexId": 57,
+            "toVertexId": 66
+        },
+        {
+            "fromVertexId": 58,
+            "toVertexId": 59
+        },
+        {
+            "fromVertexId": 58,
+            "toVertexId": 67
+        },
+        {
+            "fromVertexId": 59,
+            "toVertexId": 60
+        },
+        {
+            "fromVertexId": 59,
+            "toVertexId": 68
+        },
+        {
+            "fromVertexId": 60,
+            "toVertexId": 61
+        },
+        {
+            "fromVertexId": 60,
+            "toVertexId": 69
+        },
+        {
+            "fromVertexId": 61,
+            "toVertexId": 62
+        },
+        {
+            "fromVertexId": 61,
+            "toVertexId": 70
+        },
+        {
+            "fromVertexId": 62,
+            "toVertexId": 71
+        },
+        {
+            "fromVertexId": 63,
+            "toVertexId": 64
+        },
+        {
+            "fromVertexId": 63,
+            "toVertexId": 72
+        },
+        {
+            "fromVertexId": 64,
+            "toVertexId": 65
+        },
+        {
+            "fromVertexId": 64,
+            "toVertexId": 73
+        },
+        {
+            "fromVertexId": 65,
+            "toVertexId": 66
+        },
+        {
+            "fromVertexId": 65,
+            "toVertexId": 74
+        },
+        {
+            "fromVertexId": 66,
+            "toVertexId": 67
+        },
+        {
+            "fromVertexId": 66,
+            "toVertexId": 75
+        },
+        {
+            "fromVertexId": 67,
+            "toVertexId": 68
+        },
+        {
+            "fromVertexId": 67,
+            "toVertexId": 76
+        },
+        {
+            "fromVertexId": 68,
+            "toVertexId": 69
+        },
+        {
+            "fromVertexId": 68,
+            "toVertexId": 77
+        },
+        {
+            "fromVertexId": 69,
+            "toVertexId": 70
+        },
+        {
+            "fromVertexId": 69,
+            "toVertexId": 78
+        },
+        {
+            "fromVertexId": 70,
+            "toVertexId": 71
+        },
+        {
+            "fromVertexId": 70,
+            "toVertexId": 79
+        },
+        {
+            "fromVertexId": 71,
+            "toVertexId": 80
+        },
+        {
+            "fromVertexId": 72,
+            "toVertexId": 73
+        },
+        {
+            "fromVertexId": 73,
+            "toVertexId": 74
+        },
+        {
+            "fromVertexId": 74,
+            "toVertexId": 75
+        },
+        {
+            "fromVertexId": 75,
+            "toVertexId": 76
+        },
+        {
+            "fromVertexId": 76,
+            "toVertexId": 77
+        },
+        {
+            "fromVertexId": 77,
+            "toVertexId": 78
+        },
+        {
+            "fromVertexId": 78,
+            "toVertexId": 79
+        },
+        {
+            "fromVertexId": 79,
+            "toVertexId": 80
+        }
+    ],
+    "arrows": [
+        {
+            "arrowId": 1,
+            "length": 11,
+            "occupiedCells": [
+                {
+                    "x": 0,
+                    "y": 4
+                },
+                {
+                    "x": 1,
+                    "y": 4
+                },
+                {
+                    "x": 1,
+                    "y": 5
+                },
+                {
+                    "x": 0,
+                    "y": 5
+                },
+                {
+                    "x": 0,
+                    "y": 6
+                },
+                {
+                    "x": 0,
+                    "y": 7
+                },
+                {
+                    "x": 0,
+                    "y": 8
+                },
+                {
+                    "x": 1,
+                    "y": 8
+                },
+                {
+                    "x": 1,
+                    "y": 7
+                },
+                {
+                    "x": 1,
+                    "y": 6
+                },
+                {
+                    "x": 2,
+                    "y": 6
+                }
+            ],
+            "tipCell": {
+                "x": 2,
+                "y": 6
+            },
+            "tipDirection": 4,
+            "isSolved": false
+        },
+        {
+            "arrowId": 2,
+            "length": 8,
+            "occupiedCells": [
+                {
+                    "x": 6,
+                    "y": 8
+                },
+                {
+                    "x": 5,
+                    "y": 8
+                },
+                {
+                    "x": 4,
+                    "y": 8
+                },
+                {
+                    "x": 3,
+                    "y": 8
+                },
+                {
+                    "x": 2,
+                    "y": 8
+                },
+                {
+                    "x": 2,
+                    "y": 7
+                },
+                {
+                    "x": 3,
+                    "y": 7
+                },
+                {
+                    "x": 3,
+                    "y": 6
+                }
+            ],
+            "tipCell": {
+                "x": 3,
+                "y": 6
+            },
+            "tipDirection": 2,
+            "isSolved": false
+        },
+        {
+            "arrowId": 3,
+            "length": 8,
+            "occupiedCells": [
+                {
+                    "x": 7,
+                    "y": 6
+                },
+                {
+                    "x": 6,
+                    "y": 6
+                },
+                {
+                    "x": 6,
+                    "y": 7
+                },
+                {
+                    "x": 7,
+                    "y": 7
+                },
+                {
+                    "x": 7,
+                    "y": 8
+                },
+                {
+                    "x": 8,
+                    "y": 8
+                },
+                {
+                    "x": 8,
+                    "y": 7
+                },
+                {
+                    "x": 8,
+                    "y": 6
+                }
+            ],
+            "tipCell": {
+                "x": 8,
+                "y": 6
+            },
+            "tipDirection": 2,
+            "isSolved": false
+        },
+        {
+            "arrowId": 4,
+            "length": 9,
+            "occupiedCells": [
+                {
+                    "x": 6,
+                    "y": 3
+                },
+                {
+                    "x": 7,
+                    "y": 3
+                },
+                {
+                    "x": 7,
+                    "y": 4
+                },
+                {
+                    "x": 7,
+                    "y": 5
+                },
+                {
+                    "x": 8,
+                    "y": 5
+                },
+                {
+                    "x": 8,
+                    "y": 4
+                },
+                {
+                    "x": 8,
+                    "y": 3
+                },
+                {
+                    "x": 8,
+                    "y": 2
+                },
+                {
+                    "x": 8,
+                    "y": 1
+                }
+            ],
+            "tipCell": {
+                "x": 8,
+                "y": 1
+            },
+            "tipDirection": 2,
+            "isSolved": false
+        },
+        {
+            "arrowId": 5,
+            "length": 7,
+            "occupiedCells": [
+                {
+                    "x": 6,
+                    "y": 0
+                },
+                {
+                    "x": 6,
+                    "y": 1
+                },
+                {
+                    "x": 6,
+                    "y": 2
+                },
+                {
+                    "x": 7,
+                    "y": 2
+                },
+                {
+                    "x": 7,
+                    "y": 1
+                },
+                {
+                    "x": 7,
+                    "y": 0
+                },
+                {
+                    "x": 8,
+                    "y": 0
+                }
+            ],
+            "tipCell": {
+                "x": 8,
+                "y": 0
+            },
+            "tipDirection": 4,
+            "isSolved": false
+        },
+        {
+            "arrowId": 6,
+            "length": 8,
+            "occupiedCells": [
+                {
+                    "x": 5,
+                    "y": 2
+                },
+                {
+                    "x": 5,
+                    "y": 1
+                },
+                {
+                    "x": 5,
+                    "y": 0
+                },
+                {
+                    "x": 4,
+                    "y": 0
+                },
+                {
+                    "x": 4,
+                    "y": 1
+                },
+                {
+                    "x": 4,
+                    "y": 2
+                },
+                {
+                    "x": 4,
+                    "y": 3
+                },
+                {
+                    "x": 5,
+                    "y": 3
+                }
+            ],
+            "tipCell": {
+                "x": 5,
+                "y": 3
+            },
+            "tipDirection": 4,
+            "isSolved": false
+        },
+        {
+            "arrowId": 7,
+            "length": 7,
+            "occupiedCells": [
+                {
+                    "x": 2,
+                    "y": 5
+                },
+                {
+                    "x": 3,
+                    "y": 5
+                },
+                {
+                    "x": 4,
+                    "y": 5
+                },
+                {
+                    "x": 4,
+                    "y": 6
+                },
+                {
+                    "x": 4,
+                    "y": 7
+                },
+                {
+                    "x": 5,
+                    "y": 7
+                },
+                {
+                    "x": 5,
+                    "y": 6
+                }
+            ],
+            "tipCell": {
+                "x": 5,
+                "y": 6
+            },
+            "tipDirection": 2,
+            "isSolved": false
+        },
+        {
+            "arrowId": 8,
+            "length": 7,
+            "occupiedCells": [
+                {
+                    "x": 2,
+                    "y": 4
+                },
+                {
+                    "x": 3,
+                    "y": 4
+                },
+                {
+                    "x": 4,
+                    "y": 4
+                },
+                {
+                    "x": 5,
+                    "y": 4
+                },
+                {
+                    "x": 5,
+                    "y": 5
+                },
+                {
+                    "x": 6,
+                    "y": 5
+                },
+                {
+                    "x": 6,
+                    "y": 4
+                }
+            ],
+            "tipCell": {
+                "x": 6,
+                "y": 4
+            },
+            "tipDirection": 2,
+            "isSolved": false
+        },
+        {
+            "arrowId": 9,
+            "length": 9,
+            "occupiedCells": [
+                {
+                    "x": 2,
+                    "y": 1
+                },
+                {
+                    "x": 1,
+                    "y": 1
+                },
+                {
+                    "x": 1,
+                    "y": 0
+                },
+                {
+                    "x": 2,
+                    "y": 0
+                },
+                {
+                    "x": 3,
+                    "y": 0
+                },
+                {
+                    "x": 3,
+                    "y": 1
+                },
+                {
+                    "x": 3,
+                    "y": 2
+                },
+                {
+                    "x": 2,
+                    "y": 2
+                },
+                {
+                    "x": 1,
+                    "y": 2
+                }
+            ],
+            "tipCell": {
+                "x": 1,
+                "y": 2
+            },
+            "tipDirection": 3,
+            "isSolved": false
+        },
+        {
+            "arrowId": 10,
+            "length": 7,
+            "occupiedCells": [
+                {
+                    "x": 3,
+                    "y": 3
+                },
+                {
+                    "x": 2,
+                    "y": 3
+                },
+                {
+                    "x": 1,
+                    "y": 3
+                },
+                {
+                    "x": 0,
+                    "y": 3
+                },
+                {
+                    "x": 0,
+                    "y": 2
+                },
+                {
+                    "x": 0,
+                    "y": 1
+                },
+                {
+                    "x": 0,
+                    "y": 0
+                }
+            ],
+            "tipCell": {
+                "x": 0,
+                "y": 0
+            },
+            "tipDirection": 2,
+            "isSolved": false
+        }
+    ],
+    "shapeCells": [
+        {
+            "x": 0,
+            "y": 0
+        },
+        {
+            "x": 1,
+            "y": 0
+        },
+        {
+            "x": 2,
+            "y": 0
+        },
+        {
+            "x": 3,
+            "y": 0
+        },
+        {
+            "x": 4,
+            "y": 0
+        },
+        {
+            "x": 5,
+            "y": 0
+        },
+        {
+            "x": 6,
+            "y": 0
+        },
+        {
+            "x": 7,
+            "y": 0
+        },
+        {
+            "x": 8,
+            "y": 0
+        },
+        {
+            "x": 0,
+            "y": 1
+        },
+        {
+            "x": 1,
+            "y": 1
+        },
+        {
+            "x": 2,
+            "y": 1
+        },
+        {
+            "x": 3,
+            "y": 1
+        },
+        {
+            "x": 4,
+            "y": 1
+        },
+        {
+            "x": 5,
+            "y": 1
+        },
+        {
+            "x": 6,
+            "y": 1
+        },
+        {
+            "x": 7,
+            "y": 1
+        },
+        {
+            "x": 8,
+            "y": 1
+        },
+        {
+            "x": 0,
+            "y": 2
+        },
+        {
+            "x": 1,
+            "y": 2
+        },
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 3,
+            "y": 2
+        },
+        {
+            "x": 4,
+            "y": 2
+        },
+        {
+            "x": 5,
+            "y": 2
+        },
+        {
+            "x": 6,
+            "y": 2
+        },
+        {
+            "x": 7,
+            "y": 2
+        },
+        {
+            "x": 8,
+            "y": 2
+        },
+        {
+            "x": 0,
+            "y": 3
+        },
+        {
+            "x": 1,
+            "y": 3
+        },
+        {
+            "x": 2,
+            "y": 3
+        },
+        {
+            "x": 3,
+            "y": 3
+        },
+        {
+            "x": 4,
+            "y": 3
+        },
+        {
+            "x": 5,
+            "y": 3
+        },
+        {
+            "x": 6,
+            "y": 3
+        },
+        {
+            "x": 7,
+            "y": 3
+        },
+        {
+            "x": 8,
+            "y": 3
+        },
+        {
+            "x": 0,
+            "y": 4
+        },
+        {
+            "x": 1,
+            "y": 4
+        },
+        {
+            "x": 2,
+            "y": 4
+        },
+        {
+            "x": 3,
+            "y": 4
+        },
+        {
+            "x": 4,
+            "y": 4
+        },
+        {
+            "x": 5,
+            "y": 4
+        },
+        {
+            "x": 6,
+            "y": 4
+        },
+        {
+            "x": 7,
+            "y": 4
+        },
+        {
+            "x": 8,
+            "y": 4
+        },
+        {
+            "x": 0,
+            "y": 5
+        },
+        {
+            "x": 1,
+            "y": 5
+        },
+        {
+            "x": 2,
+            "y": 5
+        },
+        {
+            "x": 3,
+            "y": 5
+        },
+        {
+            "x": 4,
+            "y": 5
+        },
+        {
+            "x": 5,
+            "y": 5
+        },
+        {
+            "x": 6,
+            "y": 5
+        },
+        {
+            "x": 7,
+            "y": 5
+        },
+        {
+            "x": 8,
+            "y": 5
+        },
+        {
+            "x": 0,
+            "y": 6
+        },
+        {
+            "x": 1,
+            "y": 6
+        },
+        {
+            "x": 2,
+            "y": 6
+        },
+        {
+            "x": 3,
+            "y": 6
+        },
+        {
+            "x": 4,
+            "y": 6
+        },
+        {
+            "x": 5,
+            "y": 6
+        },
+        {
+            "x": 6,
+            "y": 6
+        },
+        {
+            "x": 7,
+            "y": 6
+        },
+        {
+            "x": 8,
+            "y": 6
+        },
+        {
+            "x": 0,
+            "y": 7
+        },
+        {
+            "x": 1,
+            "y": 7
+        },
+        {
+            "x": 2,
+            "y": 7
+        },
+        {
+            "x": 3,
+            "y": 7
+        },
+        {
+            "x": 4,
+            "y": 7
+        },
+        {
+            "x": 5,
+            "y": 7
+        },
+        {
+            "x": 6,
+            "y": 7
+        },
+        {
+            "x": 7,
+            "y": 7
+        },
+        {
+            "x": 8,
+            "y": 7
+        },
+        {
+            "x": 0,
+            "y": 8
+        },
+        {
+            "x": 1,
+            "y": 8
+        },
+        {
+            "x": 2,
+            "y": 8
+        },
+        {
+            "x": 3,
+            "y": 8
+        },
+        {
+            "x": 4,
+            "y": 8
+        },
+        {
+            "x": 5,
+            "y": 8
+        },
+        {
+            "x": 6,
+            "y": 8
+        },
+        {
+            "x": 7,
+            "y": 8
+        },
+        {
+            "x": 8,
+            "y": 8
+        }
+    ],
+    "dependencies": [
+        {
+            "blockerArrowId": 2,
+            "blockedArrowId": 1
+        },
+        {
+            "blockerArrowId": 3,
+            "blockedArrowId": 1
+        },
+        {
+            "blockerArrowId": 4,
+            "blockedArrowId": 3
+        },
+        {
+            "blockerArrowId": 4,
+            "blockedArrowId": 6
+        },
+        {
+            "blockerArrowId": 4,
+            "blockedArrowId": 8
+        },
+        {
+            "blockerArrowId": 5,
+            "blockedArrowId": 3
+        },
+        {
+            "blockerArrowId": 5,
+            "blockedArrowId": 4
+        },
+        {
+            "blockerArrowId": 5,
+            "blockedArrowId": 8
+        },
+        {
+            "blockerArrowId": 6,
+            "blockedArrowId": 7
+        },
+        {
+            "blockerArrowId": 7,
+            "blockedArrowId": 1
+        },
+        {
+            "blockerArrowId": 7,
+            "blockedArrowId": 2
+        },
+        {
+            "blockerArrowId": 8,
+            "blockedArrowId": 2
+        },
+        {
+            "blockerArrowId": 8,
+            "blockedArrowId": 7
+        },
+        {
+            "blockerArrowId": 9,
+            "blockedArrowId": 2
+        },
+        {
+            "blockerArrowId": 10,
+            "blockedArrowId": 2
+        },
+        {
+            "blockerArrowId": 10,
+            "blockedArrowId": 9
+        }
+    ],
+    "solutionOrder": [
+        5,
+        4,
+        3,
+        6,
+        8,
+        7,
+        10,
+        9,
+        2,
+        1
+    ],
+    "createdAt": "2026-07-02T13:16:53.9990877Z",
+    "notes": "Generated by lazy exact-cover DAG generator. Seed: 694697984. Arrow count: 10. Candidate length window: 7-11. Generated candidates: 59904. Search frames: 52288. Candidate checks: 237138."
+}

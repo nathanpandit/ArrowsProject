@@ -13,19 +13,11 @@ public class LevelGenerator : MonoBehaviour
     [SerializeField] private string resourcesLevelsFolder = "Levels";
     [SerializeField] private float cellSize = 1f;
     [SerializeField] private float runtimeTileFillScale = 1f;
+    [SerializeField] private bool showTileBackgrounds;
     [SerializeField] private Color emptyColor = Color.white;
     [SerializeField] private Color occupiedCellBackgroundColor = Color.white;
     [SerializeField] private Color arrowBodyColor = Color.black;
     [SerializeField] private Color arrowTipColor = Color.black;
-    [SerializeField] private bool usePerArrowColors = true;
-    [SerializeField] private List<Color> arrowColorPalette = new List<Color>
-    {
-        new Color(0.75f, 0.75f, 0.75f, 1f),
-        new Color(0.95f, 0.38f, 0.65f, 1f),
-        new Color(0.55f, 0.82f, 0.35f, 1f),
-        new Color(0.18f, 0.65f, 1f, 1f),
-        new Color(1f, 0.78f, 0.25f, 1f)
-    };
 
     [Header("Arrow Sprites")]
     [SerializeField] private bool useConnectedArrowSprites = true;
@@ -61,7 +53,6 @@ public class LevelGenerator : MonoBehaviour
     private void Start()
     {
         ActiveInstance = this;
-        EnsureDefaultArrowPalette();
         currentLevelIndex = Mathf.Max(1, startingLevelIndex);
         currentLevelVariantIndex = Mathf.Max(1, startingLevelVariantIndex);
 
@@ -172,8 +163,6 @@ public class LevelGenerator : MonoBehaviour
 
     public void GenerateLevel(LevelData levelData)
     {
-        EnsureDefaultArrowPalette();
-
         if (levelData == null)
         {
             Debug.LogError("LevelGenerator.GenerateLevel failed: LevelData is null.");
@@ -212,7 +201,14 @@ public class LevelGenerator : MonoBehaviour
             CreateContinuousArrowVisuals(levelData);
         }
 
-        CameraManager.Instance?.ConfigureCamera(levelData);
+        if (CameraManager.Instance != null)
+        {
+            CameraManager.Instance.ConfigureCamera(levelData, cellSize);
+        }
+        else if (!CameraManager.TryConfigureMainCamera(levelData, cellSize))
+        {
+            Debug.LogWarning("LevelGenerator could not configure the camera because no CameraManager or Main Camera was found.");
+        }
     }
 
     public void ClearLevel()
@@ -293,7 +289,7 @@ public class LevelGenerator : MonoBehaviour
             case CellContentType.ArrowBody:
                 if (useContinuousArrowRendering)
                 {
-                    tile.SetEmptyVisual(occupiedCellBackgroundColor);
+                    tile.SetEmptyVisual(GetTileBackgroundColor(occupiedCellBackgroundColor));
                     break;
                 }
 
@@ -302,14 +298,14 @@ public class LevelGenerator : MonoBehaviour
             case CellContentType.ArrowTip:
                 if (useContinuousArrowRendering)
                 {
-                    tile.SetEmptyVisual(occupiedCellBackgroundColor);
+                    tile.SetEmptyVisual(GetTileBackgroundColor(occupiedCellBackgroundColor));
                     break;
                 }
 
                 ApplyArrowOverlayOrFallback(tile, vertexData, true);
                 break;
             default:
-                tile.SetEmptyVisual(emptyColor);
+                tile.SetEmptyVisual(GetTileBackgroundColor(emptyColor));
                 break;
         }
     }
@@ -371,6 +367,7 @@ public class LevelGenerator : MonoBehaviour
         arrowObject.transform.SetParent(levelRoot);
         arrowObject.transform.localPosition = Vector3.zero;
         generatedArrowVisuals.Add(arrowObject);
+        GameManager.RegisterRuntimeArrow(arrow.arrowId, arrowObject);
 
         Color arrowColor = GetArrowColor(arrow.arrowId, false);
         LineRenderer lineRenderer = arrowObject.AddComponent<LineRenderer>();
@@ -434,6 +431,7 @@ public class LevelGenerator : MonoBehaviour
         headObject.transform.SetParent(levelRoot);
         headObject.transform.position = tipWorld;
         generatedArrowVisuals.Add(headObject);
+        GameManager.RegisterRuntimeArrow(arrow.arrowId, headObject);
 
         Mesh mesh = new Mesh
         {
@@ -615,39 +613,17 @@ public class LevelGenerator : MonoBehaviour
         }
 
         Color arrowColor = GetArrowColor(vertexData.arrowId, isTip);
-        tile.SetArrowOverlayVisual(sprite, occupiedCellBackgroundColor, arrowColor, visualData.rotationZ, arrowSpriteScale);
+        tile.SetArrowOverlayVisual(sprite, GetTileBackgroundColor(occupiedCellBackgroundColor), arrowColor, visualData.rotationZ, arrowSpriteScale);
     }
 
     private Color GetArrowColor(int arrowId, bool isTip)
     {
-        EnsureDefaultArrowPalette();
-
-        if (!usePerArrowColors || arrowColorPalette == null || arrowColorPalette.Count == 0)
-        {
-            return isTip ? arrowTipColor : arrowBodyColor;
-        }
-
-        int colorIndex = Mathf.Abs(arrowId - 1) % arrowColorPalette.Count;
-        return arrowColorPalette[colorIndex];
+        return isTip ? arrowTipColor : arrowBodyColor;
     }
 
-    private void EnsureDefaultArrowPalette()
+    private Color GetTileBackgroundColor(Color visibleColor)
     {
-        if (arrowColorPalette == null)
-        {
-            arrowColorPalette = new List<Color>();
-        }
-
-        if (arrowColorPalette.Count > 0)
-        {
-            return;
-        }
-
-        arrowColorPalette.Add(new Color(0.75f, 0.75f, 0.75f, 1f));
-        arrowColorPalette.Add(new Color(0.95f, 0.38f, 0.65f, 1f));
-        arrowColorPalette.Add(new Color(0.55f, 0.82f, 0.35f, 1f));
-        arrowColorPalette.Add(new Color(0.18f, 0.65f, 1f, 1f));
-        arrowColorPalette.Add(new Color(1f, 0.78f, 0.25f, 1f));
+        return showTileBackgrounds ? visibleColor : new Color(visibleColor.r, visibleColor.g, visibleColor.b, 0f);
     }
 
     private Sprite GetSpriteForPiece(ArrowVisualPieceType pieceType)

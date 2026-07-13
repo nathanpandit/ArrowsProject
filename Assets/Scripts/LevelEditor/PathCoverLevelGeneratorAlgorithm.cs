@@ -5,14 +5,6 @@ using UnityEngine;
 
 public static class PathCoverLevelGeneratorAlgorithm
 {
-    private static readonly ArrowDirection[] Directions =
-    {
-        ArrowDirection.Up,
-        ArrowDirection.Down,
-        ArrowDirection.Left,
-        ArrowDirection.Right
-    };
-
     public static LevelData Generate(EditorGenerationRequest request)
     {
         GenerationContext context = BuildContext(request);
@@ -726,27 +718,23 @@ public static class PathCoverLevelGeneratorAlgorithm
             }
 
             Cell leaf = leaves[leafIndex];
-            for (int directionIndex = 0; directionIndex < Directions.Length; directionIndex++)
+            if (!TryGetTipDirectionForLeaf(path, leaf, out ArrowDirection direction))
             {
-                if (context.ShouldStop())
-                {
-                    return options;
-                }
-
-                ArrowDirection direction = Directions[directionIndex];
-                if (ExitRayIntersectsCells(leaf, direction, path.CellSet, context.BoardWidth, context.BoardHeight))
-                {
-                    continue;
-                }
-
-                HashSet<int> blockers = FindBlockingArrowIds(context, allPaths, path.Id, leaf, direction);
-                options.Add(new DirectionOption
-                {
-                    TipCell = leaf,
-                    Direction = direction,
-                    BlockerIds = blockers
-                });
+                continue;
             }
+
+            if (ExitRayIntersectsCells(leaf, direction, path.CellSet, context.BoardWidth, context.BoardHeight))
+            {
+                continue;
+            }
+
+            HashSet<int> blockers = FindBlockingArrowIds(context, allPaths, path.Id, leaf, direction);
+            options.Add(new DirectionOption
+            {
+                TipCell = leaf,
+                Direction = direction,
+                BlockerIds = blockers
+            });
         }
 
         return options;
@@ -957,7 +945,14 @@ public static class PathCoverLevelGeneratorAlgorithm
         Cell tipCell = new Cell(arrowData.tipCell.x, arrowData.tipCell.y);
         bool tipIsFirstLeaf = pathCells[0] == tipCell;
         bool tipIsLastLeaf = pathCells[pathCells.Count - 1] == tipCell;
-        if (!tipIsFirstLeaf && !tipIsLastLeaf)
+        if (pathCells.Count < 2 || !tipIsFirstLeaf && !tipIsLastLeaf)
+        {
+            return false;
+        }
+
+        Cell previousCell = tipIsFirstLeaf ? pathCells[1] : pathCells[pathCells.Count - 2];
+        ArrowDirection inferredDirection = DirectionFromDelta(tipCell - previousCell);
+        if (inferredDirection != arrowData.tipDirection)
         {
             return false;
         }
@@ -1105,12 +1100,14 @@ public static class PathCoverLevelGeneratorAlgorithm
         for (int leafIndex = 0; leafIndex < leaves.Count; leafIndex++)
         {
             Cell leaf = leaves[leafIndex];
-            for (int directionIndex = 0; directionIndex < Directions.Length; directionIndex++)
+            if (!TryGetTipDirectionForLeaf(path, leaf, out ArrowDirection direction))
             {
-                if (!ExitRayIntersectsCells(leaf, Directions[directionIndex], path.CellSet, context.BoardWidth, context.BoardHeight))
-                {
-                    return true;
-                }
+                continue;
+            }
+
+            if (!ExitRayIntersectsCells(leaf, direction, path.CellSet, context.BoardWidth, context.BoardHeight))
+            {
+                return true;
             }
         }
 
@@ -1178,6 +1175,30 @@ public static class PathCoverLevelGeneratorAlgorithm
         }
 
         return leaves;
+    }
+
+    private static bool TryGetTipDirectionForLeaf(PathCandidate path, Cell leaf, out ArrowDirection direction)
+    {
+        direction = ArrowDirection.None;
+        if (path?.Cells == null || path.Cells.Count < 2)
+        {
+            return false;
+        }
+
+        if (path.Cells[0] == leaf)
+        {
+            direction = DirectionFromDelta(leaf - path.Cells[1]);
+            return direction != ArrowDirection.None;
+        }
+
+        int lastIndex = path.Cells.Count - 1;
+        if (path.Cells[lastIndex] == leaf)
+        {
+            direction = DirectionFromDelta(leaf - path.Cells[lastIndex - 1]);
+            return direction != ArrowDirection.None;
+        }
+
+        return false;
     }
 
     private static HashSet<int> FindBlockingArrowIds(
@@ -1495,6 +1516,31 @@ public static class PathCoverLevelGeneratorAlgorithm
             default:
                 return Cell.Zero;
         }
+    }
+
+    private static ArrowDirection DirectionFromDelta(Cell delta)
+    {
+        if (delta.X == 1 && delta.Y == 0)
+        {
+            return ArrowDirection.Right;
+        }
+
+        if (delta.X == -1 && delta.Y == 0)
+        {
+            return ArrowDirection.Left;
+        }
+
+        if (delta.X == 0 && delta.Y == 1)
+        {
+            return ArrowDirection.Up;
+        }
+
+        if (delta.X == 0 && delta.Y == -1)
+        {
+            return ArrowDirection.Down;
+        }
+
+        return ArrowDirection.None;
     }
 
     private static void Shuffle<T>(List<T> list, System.Random random)

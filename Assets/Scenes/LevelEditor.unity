@@ -363,12 +363,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d7c57c2cb7df7c439dd607636e1bbdb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelEditor
-  gridSize: 5
-  levelIndex: 29
-  minArrowCount: 10
-  maxArrowCount: 30
+  gridSize: 30
+  levelIndex: 41
+  minArrowCount: 50
+  maxArrowCount: 80
   minArrowLength: 2
-  maxArrowLength: 16
+  maxArrowLength: 25
   lives: 3
   cellSize: 1
   originOffset: {x: 0, y: 0}
@@ -383,13 +383,22 @@ MonoBehaviour:
   paintedColor: {r: 0, g: 0, b: 0, a: 1}
   arrowBodyColor: {r: 0, g: 0, b: 0, a: 1}
   arrowTipColor: {r: 0, g: 0, b: 0, a: 1}
+  generatedArrowLineWidth: 0.22
+  generatedArrowHeadLength: 0.42
+  generatedArrowHeadWidth: 0.44
+  generatedArrowCornerVertices: 10
+  generatedArrowCapVertices: 10
+  generatedArrowSortingOrder: 5
   outputFolderRelativeToResources: Levels
   saveIntoResourcesLevels: 1
   generateGraphEdgesOnSave: 1
+  maxSolutionRowsPerCsv: 0
   showDebugLogs: 1
+  generationAlgorithm: 2
+  partialCoverTargetPercent: 85
   useRandomSeed: 0
   randomSeed: 12345
-  maxSearchIterations: 250000
+  maxSearchIterations: 5000000
   maxGenerationSeconds: 60
   maxCandidatesPerSearchState: 512
 --- !u!4 &2137619112

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -37,14 +38,24 @@ public class LevelEditor : MonoBehaviour
     [SerializeField] private Color paintedColor = Color.black;
     [SerializeField] private Color arrowBodyColor = Color.black;
     [SerializeField] private Color arrowTipColor = Color.black;
+    [SerializeField] private float generatedArrowLineWidth = 0.22f;
+    [SerializeField] private float generatedArrowHeadLength = 0.42f;
+    [SerializeField] private float generatedArrowHeadWidth = 0.44f;
+    [SerializeField] private int generatedArrowCornerVertices = 10;
+    [SerializeField] private int generatedArrowCapVertices = 10;
+    [SerializeField] private int generatedArrowSortingOrder = 5;
 
     [Header("Saving")]
     [SerializeField] private string outputFolderRelativeToResources = "Levels";
     [SerializeField] private bool saveIntoResourcesLevels = true;
     [SerializeField] private bool generateGraphEdgesOnSave = true;
+    [Tooltip("0 means unlimited. A positive value aborts saving if the level has more solution rows than this.")]
+    [SerializeField, Min(0)] private int maxSolutionRowsPerCsv;
     [SerializeField] private bool showDebugLogs;
 
     [Header("Generation")]
+    [SerializeField] private LevelGenerationAlgorithmMode generationAlgorithm = LevelGenerationAlgorithmMode.ExactCover;
+    [SerializeField, Range(1f, 100f)] private float partialCoverTargetPercent = 85f;
     [SerializeField] private bool useRandomSeed;
     [SerializeField] private int randomSeed = 12345;
     [SerializeField] private int maxSearchIterations = 250000;
@@ -52,31 +63,24 @@ public class LevelEditor : MonoBehaviour
     [SerializeField] private int maxCandidatesPerSearchState = 512;
 
     private readonly Dictionary<Vector2Int, Tile> editorTilesByPosition = new Dictionary<Vector2Int, Tile>();
+    private readonly List<GameObject> generatedArrowPreviewVisuals = new List<GameObject>();
     private readonly HashSet<Vector2Int> paintedCells = new HashSet<Vector2Int>();
+    private readonly HashSet<Vector2Int> lastGenerationInputPaintedCells = new HashSet<Vector2Int>();
+    private Material generatedArrowLineMaterial;
     private LevelData lastGeneratedLevelData;
     private bool hasLastPrimaryPaintGridPosition;
     private bool hasLastSecondaryPaintGridPosition;
+    private bool hasLastGenerationInputPaintedCells;
+    private bool suppressManualEditingFromPaintedCellsUntilRelease;
+    private bool currentConfigurationSolvable;
+    private string currentSolvabilityStatus = "Not checked yet.";
+    private int currentSolvabilityArrowCount;
+    private int currentSolvabilityPlayableCellCount;
+    private int currentSolvabilityBlockageCount;
     private Vector2Int lastPrimaryPaintGridPosition;
     private Vector2Int lastSecondaryPaintGridPosition;
+    private int selectedTailArrowId = -1;
     private const int MaxLevelVariantScan = 999;
-    private static readonly ArrowDirection[] ManualTipDirections =
-    {
-        ArrowDirection.Up,
-        ArrowDirection.Down,
-        ArrowDirection.Left,
-        ArrowDirection.Right
-    };
-    private static readonly Color[] GeneratedArrowPreviewPalette =
-    {
-        new Color(0.75f, 0.75f, 0.75f, 1f),
-        new Color(0.95f, 0.38f, 0.65f, 1f),
-        new Color(0.55f, 0.82f, 0.35f, 1f),
-        new Color(0.18f, 0.65f, 1f, 1f),
-        new Color(1f, 0.78f, 0.25f, 1f),
-        new Color(0.36f, 0.82f, 0.86f, 1f),
-        new Color(0.66f, 0.48f, 0.98f, 1f)
-    };
-
     private struct ArrowEndpointConnection
     {
         public ArrowEndpointConnection(ArrowData arrow, bool connectsToStart)
@@ -89,7 +93,22 @@ public class LevelEditor : MonoBehaviour
         public bool ConnectsToStart { get; }
     }
 
+    private struct SolvabilityCheckResult
+    {
+        public bool IsSolvable { get; set; }
+        public string Status { get; set; }
+        public int ArrowCount { get; set; }
+        public int PlayableCellCount { get; set; }
+        public int BlockageCount { get; set; }
+    }
+
     public static LevelEditor ActiveInstance { get; private set; }
+    public bool HasDisplayedGeneratedLevel => lastGeneratedLevelData != null;
+    public bool CurrentConfigurationSolvable => currentConfigurationSolvable;
+    public string CurrentSolvabilityStatus => currentSolvabilityStatus;
+    public int CurrentSolvabilityArrowCount => currentSolvabilityArrowCount;
+    public int CurrentSolvabilityPlayableCellCount => currentSolvabilityPlayableCellCount;
+    public int CurrentSolvabilityBlockageCount => currentSolvabilityBlockageCount;
 
     private Vector2 GridOrigin => originOffset - new Vector2(
         (gridSize - 1) * cellSize * 0.5f,
@@ -97,6 +116,8 @@ public class LevelEditor : MonoBehaviour
 
     private void OnDestroy()
     {
+        ClearGeneratedArrowPreviewVisuals();
+
         if (ActiveInstance == this)
         {
             ActiveInstance = null;
@@ -118,9 +139,12 @@ public class LevelEditor : MonoBehaviour
             editorCamera = Camera.main;
         }
 
-        paintedCells.Clear();
+        PaintAllGridCells();
+        lastGenerationInputPaintedCells.Clear();
+        hasLastGenerationInputPaintedCells = false;
         CreateEditorGrid();
         ConfigureEditorCamera();
+        RefreshSolvabilityStatus("scene start");
     }
 
     public void CreateEditorGrid()
@@ -145,6 +169,8 @@ public class LevelEditor : MonoBehaviour
 
     public void ClearEditorGrid()
     {
+        ClearGeneratedArrowPreviewVisuals();
+
         foreach (KeyValuePair<Vector2Int, Tile> entry in editorTilesByPosition)
         {
             if (entry.Value != null)
@@ -198,6 +224,7 @@ public class LevelEditor : MonoBehaviour
         maxArrowLength = loadedData.maxArrowLength;
         lives = loadedData.lives;
         lastGeneratedLevelData = loadedData;
+        selectedTailArrowId = -1;
 
         paintedCells.Clear();
         if (loadedData.vertices != null)
@@ -212,9 +239,12 @@ public class LevelEditor : MonoBehaviour
             }
         }
 
+        SnapshotCurrentPaintedCellsAsGenerationInput();
+
         CreateEditorGrid();
         ConfigureEditorCamera();
         UpdateVisuals();
+        RefreshSolvabilityStatus($"loaded level {baseLevelIndex}_{variantIndex}");
     }
 
     public void SaveLevel(int levelIndex)
@@ -230,12 +260,50 @@ public class LevelEditor : MonoBehaviour
         Directory.CreateDirectory(folderPath);
         int variantIndex = GetNextLevelVariantIndex(folderPath, baseLevelIndex);
 
+        this.levelIndex = baseLevelIndex;
+        lastGeneratedLevelData.levelIndex = baseLevelIndex;
+        lastGeneratedLevelData.levelVariantIndex = variantIndex;
+        CompleteGeneratedLevelData(lastGeneratedLevelData);
         lastGeneratedLevelData.levelIndex = baseLevelIndex;
         lastGeneratedLevelData.levelVariantIndex = variantIndex;
         if (string.IsNullOrWhiteSpace(lastGeneratedLevelData.createdAt))
         {
             lastGeneratedLevelData.createdAt = DateTime.UtcNow.ToString("o");
         }
+
+        SolvabilityCheckResult solvability = EvaluateCurrentSolvability();
+        currentConfigurationSolvable = solvability.IsSolvable;
+        currentSolvabilityStatus = solvability.Status;
+        currentSolvabilityArrowCount = solvability.ArrowCount;
+        currentSolvabilityPlayableCellCount = solvability.PlayableCellCount;
+        currentSolvabilityBlockageCount = solvability.BlockageCount;
+
+        if (!solvability.IsSolvable)
+        {
+            Debug.LogWarning($"LevelEditor.SaveLevel aborted: current level is not solvable. {solvability.Status}");
+            return;
+        }
+
+        if (!TryBuildBlockageGraph(
+                lastGeneratedLevelData,
+                out HashSet<int> arrowIds,
+                out Dictionary<int, HashSet<int>> blockageGraph,
+                out _,
+                out _,
+                out string graphFailureReason))
+        {
+            Debug.LogWarning($"LevelEditor.SaveLevel aborted: could not build solution graph. {graphFailureReason}");
+            return;
+        }
+
+        lastGeneratedLevelData.dependencies = BuildDependencyData(blockageGraph);
+        if (!TryFindFirstSolutionOrder(arrowIds, blockageGraph, out List<int> firstSolutionOrder))
+        {
+            Debug.LogWarning("LevelEditor.SaveLevel aborted: no valid solution order could be found.");
+            return;
+        }
+
+        lastGeneratedLevelData.solutionOrder = firstSolutionOrder;
 
         if (!lastGeneratedLevelData.Validate())
         {
@@ -245,7 +313,15 @@ public class LevelEditor : MonoBehaviour
 
         string filePath = Path.Combine(folderPath, BuildLevelVariantFileName(baseLevelIndex, variantIndex));
         string json = JsonUtility.ToJson(lastGeneratedLevelData, true);
-        File.WriteAllText(filePath, json);
+        try
+        {
+            File.WriteAllText(filePath, json);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError($"LevelEditor.SaveLevel failed while writing the level file. {exception.Message}");
+            return;
+        }
 
 #if UNITY_EDITOR
         AssetDatabase.Refresh();
@@ -253,14 +329,13 @@ public class LevelEditor : MonoBehaviour
 
         EventManager.Instance?.TriggerLevelSaved(baseLevelIndex);
 
-        if (showDebugLogs)
-        {
-            Debug.Log($"Saved level {baseLevelIndex}_{variantIndex} to {filePath}");
-        }
+        Debug.Log($"Saved level {baseLevelIndex}_{variantIndex} to {filePath}. Solution CSV generation is currently disabled during level saving.");
     }
 
     public void UpdateVisuals()
     {
+        ClearGeneratedArrowPreviewVisuals();
+
         foreach (KeyValuePair<Vector2Int, Tile> entry in editorTilesByPosition)
         {
             Vector2Int position = entry.Key;
@@ -272,13 +347,9 @@ public class LevelEditor : MonoBehaviour
             }
 
             VertexData generatedVertex = lastGeneratedLevelData?.GetVertexAt(position.x, position.y);
-            if (generatedVertex != null && generatedVertex.contentType == CellContentType.ArrowTip)
+            if (generatedVertex != null && generatedVertex.contentType != CellContentType.Empty)
             {
-                tile.SetArrowTipVisual(GetGeneratedArrowPreviewColor(generatedVertex.arrowId), generatedVertex.tipDirection);
-            }
-            else if (generatedVertex != null && generatedVertex.contentType == CellContentType.ArrowBody)
-            {
-                tile.SetArrowBodyVisual(GetGeneratedArrowPreviewColor(generatedVertex.arrowId));
+                tile.SetEmptyVisual(emptyColor);
             }
             else if (paintedCells.Contains(position))
             {
@@ -288,6 +359,16 @@ public class LevelEditor : MonoBehaviour
             {
                 tile.SetEmptyVisual(emptyColor);
             }
+
+            if (IsSelectedTailPosition(position))
+            {
+                tile.SetSelectedVisual();
+            }
+        }
+
+        if (lastGeneratedLevelData != null)
+        {
+            CreateGeneratedArrowPreviewVisuals(lastGeneratedLevelData);
         }
     }
 
@@ -315,6 +396,7 @@ public class LevelEditor : MonoBehaviour
     {
         hasLastPrimaryPaintGridPosition = false;
         hasLastSecondaryPaintGridPosition = false;
+        suppressManualEditingFromPaintedCellsUntilRelease = false;
     }
 
     public void HandleSaveGenerateShortcut()
@@ -341,12 +423,16 @@ public class LevelEditor : MonoBehaviour
     public void ResetDesignedLevel()
     {
         lastGeneratedLevelData = null;
+        selectedTailArrowId = -1;
+        suppressManualEditingFromPaintedCellsUntilRelease = false;
+        RestoreLastGenerationInputPaintedCells();
         EndPaintDrag();
         UpdateVisuals();
+        RefreshSolvabilityStatus("reset displayed level");
 
         if (showDebugLogs)
         {
-            Debug.Log("Reset displayed generated level. Painted input mask is still available.");
+            Debug.Log($"Reset displayed generated level. Restored painted input mask cells: {paintedCells.Count}.");
         }
     }
 
@@ -427,7 +513,8 @@ public class LevelEditor : MonoBehaviour
             randomSeed = randomSeed,
             maxSearchIterations = maxSearchIterations,
             maxGenerationSeconds = maxGenerationSeconds,
-            maxCandidatesPerSearchState = maxCandidatesPerSearchState
+            maxCandidatesPerSearchState = maxCandidatesPerSearchState,
+            partialCoverTargetPercent = partialCoverTargetPercent * 0.01f
         };
 
         foreach (Vector2Int position in paintedCells)
@@ -442,10 +529,8 @@ public class LevelEditor : MonoBehaviour
     {
         EditorGenerationRequest request = BuildGenerationRequest();
         Debug.Log($"Level generation started for level {levelIndex}. Painted cells: {request.paintedCells.Count}.");
-        // Legacy generator kept for reference while testing newer generation approaches.
-        // LevelData generatedData = LevelGeneratorAlgorithm.Generate(request);
-        // LevelData generatedData = ExactCoverLevelGeneratorAlgorithm.Generate(request);
-        LevelData generatedData = PathCoverLevelGeneratorAlgorithm.Generate(request);
+        SnapshotGenerationInputPaintedCells(request.paintedCells);
+        LevelData generatedData = GenerateLevelData(request);
 
         if (generatedData == null)
         {
@@ -458,10 +543,18 @@ public class LevelEditor : MonoBehaviour
         int generatedArrowCount = generatedData.arrows?.Count ?? 0;
         int requestMinArrowCount = Mathf.Max(0, Mathf.Min(minArrowCount, maxArrowCount));
         int requestMaxArrowCount = Mathf.Max(requestMinArrowCount, Mathf.Max(minArrowCount, maxArrowCount));
-        if (generatedArrowCount < requestMinArrowCount || generatedArrowCount > requestMaxArrowCount)
+        bool acceptsPartialExactFallback = generationAlgorithm == LevelGenerationAlgorithmMode.PartialExactCover &&
+                                           generatedArrowCount > 0 &&
+                                           generatedArrowCount < requestMinArrowCount;
+        if ((!acceptsPartialExactFallback && generatedArrowCount < requestMinArrowCount) || generatedArrowCount > requestMaxArrowCount)
         {
             Debug.LogWarning($"Generated LevelData has {generatedArrowCount} arrows, but the requested range is {requestMinArrowCount}-{requestMaxArrowCount}. It was not saved.");
             return null;
+        }
+
+        if (acceptsPartialExactFallback)
+        {
+            Debug.Log($"PartialExactCover displayed a fallback level with {generatedArrowCount} arrows, below the requested minimum of {requestMinArrowCount}.");
         }
 
         if (!generatedData.Validate())
@@ -471,9 +564,28 @@ public class LevelEditor : MonoBehaviour
         }
 
         lastGeneratedLevelData = generatedData;
+        selectedTailArrowId = -1;
         UpdateVisuals();
-        Debug.Log($"Level generation completed and displayed. Arrows: {generatedData.arrows.Count}. Occupied cells: {CountGeneratedOccupiedCells(generatedData)}. Press S to save or R to reset the displayed design.");
+        RefreshSolvabilityStatus("level generated");
+        Debug.Log($"Level generation completed and displayed. Algorithm: {generationAlgorithm}. Arrows: {generatedData.arrows.Count}. Occupied cells: {CountGeneratedOccupiedCells(generatedData)}. Press S to save or R to reset the displayed design.");
         return generatedData;
+    }
+
+    private LevelData GenerateLevelData(EditorGenerationRequest request)
+    {
+        switch (generationAlgorithm)
+        {
+            case LevelGenerationAlgorithmMode.PartialExactCover:
+                return PartialExactCoverAlgorithm.Generate(request);
+            case LevelGenerationAlgorithmMode.PartialCover:
+                return PartialCoverLevelGeneratorAlgorithm.Generate(request);
+            case LevelGenerationAlgorithmMode.ExactCover:
+            default:
+                // Legacy generator kept for reference while testing newer generation approaches.
+                // return LevelGeneratorAlgorithm.Generate(request);
+                // return PathCoverLevelGeneratorAlgorithm.Generate(request);
+                return ExactCoverLevelGeneratorAlgorithm.Generate(request);
+        }
     }
 
     public LevelData BuildEmptyLevelDataSkeleton()
@@ -644,28 +756,38 @@ public class LevelEditor : MonoBehaviour
         }
 
         bool changed;
+        if (lastGeneratedLevelData == null &&
+            isPainted &&
+            paintedCells.Contains(gridPosition) &&
+            !suppressManualEditingFromPaintedCellsUntilRelease)
+        {
+            BeginManualDesignedLevelFromPaintedMask();
+            changed = HandleDesignedLevelPrimaryClick(gridPosition);
+
+            if (changed)
+            {
+                RefreshGeneratedLevelAfterManualEdit();
+            }
+
+            if (changed && showDebugLogs)
+            {
+                Debug.Log($"Started manual level editing from painted cell {gridPosition}");
+            }
+
+            UpdateVisuals();
+            if (changed)
+            {
+                RefreshSolvabilityStatus("manual level created");
+            }
+
+            return;
+        }
+
         if (lastGeneratedLevelData != null)
         {
-            if (isPainted)
-            {
-                changed = hasLastPrimaryPaintGridPosition
-                    ? SetDesignedLevelLine(lastPrimaryPaintGridPosition, gridPosition, true)
-                    : SetDesignedLevelGridCell(gridPosition, true);
-
-                lastPrimaryPaintGridPosition = gridPosition;
-                hasLastPrimaryPaintGridPosition = true;
-                hasLastSecondaryPaintGridPosition = false;
-            }
-            else
-            {
-                changed = hasLastSecondaryPaintGridPosition
-                    ? SetDesignedLevelLine(lastSecondaryPaintGridPosition, gridPosition, false)
-                    : SetDesignedLevelGridCell(gridPosition, false);
-
-                lastSecondaryPaintGridPosition = gridPosition;
-                hasLastSecondaryPaintGridPosition = true;
-                hasLastPrimaryPaintGridPosition = false;
-            }
+            changed = isPainted
+                ? HandleDesignedLevelPrimaryClick(gridPosition)
+                : HandleDesignedLevelSecondaryClick(gridPosition);
 
             if (changed)
             {
@@ -678,6 +800,11 @@ public class LevelEditor : MonoBehaviour
             }
 
             UpdateVisuals();
+            if (changed)
+            {
+                RefreshSolvabilityStatus("manual edit");
+            }
+
             return;
         }
 
@@ -703,6 +830,16 @@ public class LevelEditor : MonoBehaviour
         }
 
         lastGeneratedLevelData = null;
+        selectedTailArrowId = -1;
+        if (changed)
+        {
+            hasLastGenerationInputPaintedCells = false;
+            lastGenerationInputPaintedCells.Clear();
+            if (isPainted)
+            {
+                suppressManualEditingFromPaintedCellsUntilRelease = true;
+            }
+        }
 
         if (changed && showDebugLogs)
         {
@@ -710,6 +847,17 @@ public class LevelEditor : MonoBehaviour
         }
 
         UpdateVisuals();
+    }
+
+    private void BeginManualDesignedLevelFromPaintedMask()
+    {
+        SnapshotCurrentPaintedCellsAsGenerationInput();
+        lastGeneratedLevelData = BuildEmptyLevelDataSkeleton();
+        lastGeneratedLevelData.notes = "Manually designed from painted LevelEditor mask.";
+        selectedTailArrowId = -1;
+        hasLastPrimaryPaintGridPosition = false;
+        hasLastSecondaryPaintGridPosition = false;
+        suppressManualEditingFromPaintedCellsUntilRelease = false;
     }
 
     private bool SetPaintedLine(Vector2Int from, Vector2Int to, bool isPainted)
@@ -758,17 +906,6 @@ public class LevelEditor : MonoBehaviour
         return isPainted ? paintedCells.Add(gridPosition) : paintedCells.Remove(gridPosition);
     }
 
-    private static Color GetGeneratedArrowPreviewColor(int arrowId)
-    {
-        if (GeneratedArrowPreviewPalette == null || GeneratedArrowPreviewPalette.Length == 0)
-        {
-            return Color.white;
-        }
-
-        int colorIndex = Mathf.Abs(arrowId - 1) % GeneratedArrowPreviewPalette.Length;
-        return GeneratedArrowPreviewPalette[colorIndex];
-    }
-
     private static int CountGeneratedOccupiedCells(LevelData levelData)
     {
         if (levelData?.arrows == null)
@@ -787,6 +924,871 @@ public class LevelEditor : MonoBehaviour
         }
 
         return occupiedCellCount;
+    }
+
+    private void RefreshSolvabilityStatus(string triggerLabel)
+    {
+        SolvabilityCheckResult result = EvaluateCurrentSolvability();
+        currentConfigurationSolvable = result.IsSolvable;
+        currentSolvabilityStatus = result.Status;
+        currentSolvabilityArrowCount = result.ArrowCount;
+        currentSolvabilityPlayableCellCount = result.PlayableCellCount;
+        currentSolvabilityBlockageCount = result.BlockageCount;
+
+        if (showDebugLogs)
+        {
+            string label = string.IsNullOrWhiteSpace(triggerLabel) ? "unknown trigger" : triggerLabel;
+            Debug.Log($"Solvability check ({label}): {(result.IsSolvable ? "solvable" : "not solvable")} - {result.Status}");
+        }
+
+#if UNITY_EDITOR
+        EditorUtility.SetDirty(this);
+#endif
+    }
+
+    private SolvabilityCheckResult EvaluateCurrentSolvability()
+    {
+        if (lastGeneratedLevelData == null)
+        {
+            return new SolvabilityCheckResult
+            {
+                IsSolvable = false,
+                Status = "Not solvable: no generated arrow configuration is displayed."
+            };
+        }
+
+        if (lastGeneratedLevelData.arrows == null || lastGeneratedLevelData.arrows.Count == 0)
+        {
+            return new SolvabilityCheckResult
+            {
+                IsSolvable = false,
+                Status = "Not solvable: no arrows."
+            };
+        }
+
+        if (!TryBuildBlockageGraph(
+                lastGeneratedLevelData,
+                out HashSet<int> arrowIds,
+                out Dictionary<int, HashSet<int>> blockageGraph,
+                out int playableCellCount,
+                out int blockageCount,
+                out string failureReason))
+        {
+            return new SolvabilityCheckResult
+            {
+                IsSolvable = false,
+                Status = $"Not solvable: {failureReason}",
+                ArrowCount = arrowIds?.Count ?? 0,
+                PlayableCellCount = playableCellCount,
+                BlockageCount = blockageCount
+            };
+        }
+
+        if (arrowIds.Count == 0)
+        {
+            return new SolvabilityCheckResult
+            {
+                IsSolvable = false,
+                Status = "Not solvable: no arrows.",
+                PlayableCellCount = playableCellCount,
+                BlockageCount = blockageCount
+            };
+        }
+
+        if (playableCellCount == 0)
+        {
+            return new SolvabilityCheckResult
+            {
+                IsSolvable = false,
+                Status = "Not solvable: no playable cells.",
+                ArrowCount = arrowIds.Count,
+                BlockageCount = blockageCount
+            };
+        }
+
+        if (!IsBlockageGraphAcyclic(arrowIds, blockageGraph))
+        {
+            return new SolvabilityCheckResult
+            {
+                IsSolvable = false,
+                Status = "Not solvable: blockage graph contains a cycle.",
+                ArrowCount = arrowIds.Count,
+                PlayableCellCount = playableCellCount,
+                BlockageCount = blockageCount
+            };
+        }
+
+        return new SolvabilityCheckResult
+        {
+            IsSolvable = true,
+            Status = "Solvable: blockage graph is acyclic.",
+            ArrowCount = arrowIds.Count,
+            PlayableCellCount = playableCellCount,
+            BlockageCount = blockageCount
+        };
+    }
+
+    private bool TryBuildBlockageGraph(
+        LevelData levelData,
+        out HashSet<int> arrowIds,
+        out Dictionary<int, HashSet<int>> blockageGraph,
+        out int playableCellCount,
+        out int blockageCount,
+        out string failureReason)
+    {
+        arrowIds = new HashSet<int>();
+        blockageGraph = new Dictionary<int, HashSet<int>>();
+        playableCellCount = 0;
+        blockageCount = 0;
+        failureReason = string.Empty;
+
+        Dictionary<Vector2Int, int> arrowIdByCell = new Dictionary<Vector2Int, int>();
+        if (levelData == null || levelData.arrows == null)
+        {
+            failureReason = "missing level data.";
+            return false;
+        }
+
+        for (int arrowIndex = 0; arrowIndex < levelData.arrows.Count; arrowIndex++)
+        {
+            ArrowData arrow = levelData.arrows[arrowIndex];
+            if (arrow == null || arrow.occupiedCells == null || arrow.occupiedCells.Count == 0)
+            {
+                continue;
+            }
+
+            if (!arrowIds.Add(arrow.arrowId))
+            {
+                failureReason = $"duplicate arrow id {arrow.arrowId}.";
+                return false;
+            }
+
+            blockageGraph[arrow.arrowId] = new HashSet<int>();
+
+            for (int cellIndex = 0; cellIndex < arrow.occupiedCells.Count; cellIndex++)
+            {
+                GridPositionData cell = arrow.occupiedCells[cellIndex];
+                if (cell == null || !levelData.IsInsideGrid(cell.x, cell.y))
+                {
+                    failureReason = $"arrow {arrow.arrowId} has an invalid occupied cell.";
+                    return false;
+                }
+
+                Vector2Int position = new Vector2Int(cell.x, cell.y);
+                if (arrowIdByCell.TryGetValue(position, out int existingArrowId))
+                {
+                    failureReason = $"cell {position} is occupied by arrows {existingArrowId} and {arrow.arrowId}.";
+                    return false;
+                }
+
+                arrowIdByCell.Add(position, arrow.arrowId);
+                playableCellCount++;
+            }
+        }
+
+        foreach (int arrowId in arrowIds)
+        {
+            if (!blockageGraph.ContainsKey(arrowId))
+            {
+                blockageGraph[arrowId] = new HashSet<int>();
+            }
+        }
+
+        for (int arrowIndex = 0; arrowIndex < levelData.arrows.Count; arrowIndex++)
+        {
+            ArrowData arrow = levelData.arrows[arrowIndex];
+            if (arrow == null || arrow.occupiedCells == null || arrow.occupiedCells.Count == 0)
+            {
+                continue;
+            }
+
+            if (arrow.tipCell == null || arrow.tipDirection == ArrowDirection.None)
+            {
+                failureReason = $"arrow {arrow.arrowId} has no valid tip.";
+                return false;
+            }
+
+            Vector2Int direction = DirectionToVector(arrow.tipDirection);
+            if (direction == Vector2Int.zero)
+            {
+                failureReason = $"arrow {arrow.arrowId} has no valid exit direction.";
+                return false;
+            }
+
+            Vector2Int cursor = new Vector2Int(arrow.tipCell.x, arrow.tipCell.y) + direction;
+            HashSet<int> blockersForArrow = new HashSet<int>();
+            while (levelData.IsInsideGrid(cursor.x, cursor.y))
+            {
+                if (arrowIdByCell.TryGetValue(cursor, out int blockerArrowId))
+                {
+                    if (blockerArrowId == arrow.arrowId)
+                    {
+                        failureReason = $"arrow {arrow.arrowId} blocks itself.";
+                        return false;
+                    }
+
+                    blockersForArrow.Add(blockerArrowId);
+                }
+
+                cursor += direction;
+            }
+
+            foreach (int blockerArrowId in blockersForArrow)
+            {
+                if (blockageGraph[blockerArrowId].Add(arrow.arrowId))
+                {
+                    blockageCount++;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsBlockageGraphAcyclic(HashSet<int> arrowIds, Dictionary<int, HashSet<int>> blockageGraph)
+    {
+        if (arrowIds == null || blockageGraph == null)
+        {
+            return false;
+        }
+
+        Dictionary<int, int> indegreeByArrowId = new Dictionary<int, int>();
+        foreach (int arrowId in arrowIds)
+        {
+            indegreeByArrowId[arrowId] = 0;
+        }
+
+        foreach (KeyValuePair<int, HashSet<int>> entry in blockageGraph)
+        {
+            foreach (int blockedArrowId in entry.Value)
+            {
+                if (!indegreeByArrowId.ContainsKey(blockedArrowId))
+                {
+                    continue;
+                }
+
+                indegreeByArrowId[blockedArrowId]++;
+            }
+        }
+
+        Queue<int> ready = new Queue<int>();
+        foreach (KeyValuePair<int, int> entry in indegreeByArrowId)
+        {
+            if (entry.Value == 0)
+            {
+                ready.Enqueue(entry.Key);
+            }
+        }
+
+        int visitedCount = 0;
+        while (ready.Count > 0)
+        {
+            int arrowId = ready.Dequeue();
+            visitedCount++;
+
+            if (!blockageGraph.TryGetValue(arrowId, out HashSet<int> blockedArrows))
+            {
+                continue;
+            }
+
+            foreach (int blockedArrowId in blockedArrows)
+            {
+                if (!indegreeByArrowId.ContainsKey(blockedArrowId))
+                {
+                    continue;
+                }
+
+                indegreeByArrowId[blockedArrowId]--;
+                if (indegreeByArrowId[blockedArrowId] == 0)
+                {
+                    ready.Enqueue(blockedArrowId);
+                }
+            }
+        }
+
+        return visitedCount == arrowIds.Count;
+    }
+
+    private static List<DependencyData> BuildDependencyData(Dictionary<int, HashSet<int>> blockageGraph)
+    {
+        List<DependencyData> dependencies = new List<DependencyData>();
+        if (blockageGraph == null)
+        {
+            return dependencies;
+        }
+
+        List<int> blockerIds = new List<int>(blockageGraph.Keys);
+        blockerIds.Sort();
+        for (int blockerIndex = 0; blockerIndex < blockerIds.Count; blockerIndex++)
+        {
+            int blockerArrowId = blockerIds[blockerIndex];
+            if (!blockageGraph.TryGetValue(blockerArrowId, out HashSet<int> blockedArrows))
+            {
+                continue;
+            }
+
+            List<int> blockedArrowIds = new List<int>(blockedArrows);
+            blockedArrowIds.Sort();
+            for (int blockedIndex = 0; blockedIndex < blockedArrowIds.Count; blockedIndex++)
+            {
+                dependencies.Add(new DependencyData(blockerArrowId, blockedArrowIds[blockedIndex]));
+            }
+        }
+
+        return dependencies;
+    }
+
+    private static bool TryFindFirstSolutionOrder(
+        HashSet<int> arrowIds,
+        Dictionary<int, HashSet<int>> blockageGraph,
+        out List<int> solutionOrder)
+    {
+        solutionOrder = new List<int>();
+        if (arrowIds == null || blockageGraph == null)
+        {
+            return false;
+        }
+
+        Dictionary<int, int> indegreeByArrowId = BuildIndegreeByArrowId(arrowIds, blockageGraph);
+        SortedSet<int> readyArrowIds = new SortedSet<int>();
+        foreach (int arrowId in arrowIds)
+        {
+            if (indegreeByArrowId.TryGetValue(arrowId, out int indegree) && indegree == 0)
+            {
+                readyArrowIds.Add(arrowId);
+            }
+        }
+
+        while (readyArrowIds.Count > 0)
+        {
+            int arrowId = readyArrowIds.Min;
+            readyArrowIds.Remove(arrowId);
+            solutionOrder.Add(arrowId);
+
+            if (!blockageGraph.TryGetValue(arrowId, out HashSet<int> blockedArrows))
+            {
+                continue;
+            }
+
+            List<int> sortedBlockedArrows = new List<int>(blockedArrows);
+            sortedBlockedArrows.Sort();
+            for (int i = 0; i < sortedBlockedArrows.Count; i++)
+            {
+                int blockedArrowId = sortedBlockedArrows[i];
+                if (!indegreeByArrowId.ContainsKey(blockedArrowId))
+                {
+                    continue;
+                }
+
+                indegreeByArrowId[blockedArrowId]--;
+                if (indegreeByArrowId[blockedArrowId] == 0)
+                {
+                    readyArrowIds.Add(blockedArrowId);
+                }
+            }
+        }
+
+        return solutionOrder.Count == arrowIds.Count;
+    }
+
+    private bool TrySaveAllSolutionsCsv(
+        HashSet<int> arrowIds,
+        Dictionary<int, HashSet<int>> blockageGraph,
+        int baseLevelIndex,
+        int variantIndex,
+        out string solutionFilePath,
+        out long solutionCount,
+        out string failureReason)
+    {
+        solutionFilePath = Path.Combine(GetSolutionsFolderPath(), BuildSolutionVariantFileName(baseLevelIndex, variantIndex));
+        solutionCount = 0;
+        failureReason = string.Empty;
+
+        if (arrowIds == null || arrowIds.Count == 0)
+        {
+            failureReason = "there are no arrows to solve.";
+            return false;
+        }
+
+        if (blockageGraph == null || !IsBlockageGraphAcyclic(arrowIds, blockageGraph))
+        {
+            failureReason = "the blockage graph is not acyclic.";
+            return false;
+        }
+
+        string folderPath = GetSolutionsFolderPath();
+        Directory.CreateDirectory(folderPath);
+        string tempFilePath = solutionFilePath + ".tmp";
+
+        try
+        {
+            using (StreamWriter writer = new StreamWriter(tempFilePath, false, Encoding.UTF8))
+            {
+                WriteSolutionCsvHeader(writer, arrowIds.Count);
+
+                Dictionary<int, int> indegreeByArrowId = BuildIndegreeByArrowId(arrowIds, blockageGraph);
+                SortedSet<int> readyArrowIds = new SortedSet<int>();
+                foreach (int arrowId in arrowIds)
+                {
+                    if (indegreeByArrowId.TryGetValue(arrowId, out int indegree) && indegree == 0)
+                    {
+                        readyArrowIds.Add(arrowId);
+                    }
+                }
+
+                List<int> currentOrder = new List<int>(arrowIds.Count);
+                long maxRows = maxSolutionRowsPerCsv > 0 ? maxSolutionRowsPerCsv : long.MaxValue;
+                if (!TryWriteAllSolutionOrders(
+                        writer,
+                        arrowIds.Count,
+                        blockageGraph,
+                        readyArrowIds,
+                        indegreeByArrowId,
+                        currentOrder,
+                        maxRows,
+                        ref solutionCount,
+                        out failureReason))
+                {
+                    TryDeleteFile(tempFilePath);
+                    return false;
+                }
+            }
+
+            if (solutionCount == 0)
+            {
+                TryDeleteFile(tempFilePath);
+                failureReason = "no solution orders were found.";
+                return false;
+            }
+
+            if (File.Exists(solutionFilePath))
+            {
+                File.Delete(solutionFilePath);
+            }
+
+            File.Move(tempFilePath, solutionFilePath);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            TryDeleteFile(tempFilePath);
+            failureReason = exception.Message;
+            return false;
+        }
+    }
+
+    private static bool TryWriteAllSolutionOrders(
+        StreamWriter writer,
+        int arrowCount,
+        Dictionary<int, HashSet<int>> blockageGraph,
+        SortedSet<int> readyArrowIds,
+        Dictionary<int, int> indegreeByArrowId,
+        List<int> currentOrder,
+        long maxRows,
+        ref long solutionCount,
+        out string failureReason)
+    {
+        failureReason = string.Empty;
+
+        if (currentOrder.Count == arrowCount)
+        {
+            if (solutionCount >= maxRows)
+            {
+                failureReason = $"the level has more than {maxRows} solution order(s). Increase Max Solution Rows Per Csv or add more blocking constraints.";
+                return false;
+            }
+
+            solutionCount++;
+            WriteSolutionCsvRow(writer, solutionCount, currentOrder);
+            return true;
+        }
+
+        if (readyArrowIds.Count == 0)
+        {
+            failureReason = "there is no removable arrow before all arrows have been removed.";
+            return false;
+        }
+
+        List<int> choices = new List<int>(readyArrowIds);
+        for (int choiceIndex = 0; choiceIndex < choices.Count; choiceIndex++)
+        {
+            int arrowId = choices[choiceIndex];
+            readyArrowIds.Remove(arrowId);
+            currentOrder.Add(arrowId);
+
+            List<int> newlyReadyArrowIds = new List<int>();
+            if (blockageGraph.TryGetValue(arrowId, out HashSet<int> blockedArrows))
+            {
+                List<int> sortedBlockedArrows = new List<int>(blockedArrows);
+                sortedBlockedArrows.Sort();
+                for (int blockedIndex = 0; blockedIndex < sortedBlockedArrows.Count; blockedIndex++)
+                {
+                    int blockedArrowId = sortedBlockedArrows[blockedIndex];
+                    if (!indegreeByArrowId.ContainsKey(blockedArrowId))
+                    {
+                        continue;
+                    }
+
+                    indegreeByArrowId[blockedArrowId]--;
+                    if (indegreeByArrowId[blockedArrowId] == 0)
+                    {
+                        readyArrowIds.Add(blockedArrowId);
+                        newlyReadyArrowIds.Add(blockedArrowId);
+                    }
+                }
+            }
+
+            bool wroteAllBranches = TryWriteAllSolutionOrders(
+                writer,
+                arrowCount,
+                blockageGraph,
+                readyArrowIds,
+                indegreeByArrowId,
+                currentOrder,
+                maxRows,
+                ref solutionCount,
+                out failureReason);
+
+            for (int i = 0; i < newlyReadyArrowIds.Count; i++)
+            {
+                readyArrowIds.Remove(newlyReadyArrowIds[i]);
+            }
+
+            if (blockageGraph.TryGetValue(arrowId, out HashSet<int> arrowsToRestore))
+            {
+                foreach (int blockedArrowId in arrowsToRestore)
+                {
+                    if (indegreeByArrowId.ContainsKey(blockedArrowId))
+                    {
+                        indegreeByArrowId[blockedArrowId]++;
+                    }
+                }
+            }
+
+            currentOrder.RemoveAt(currentOrder.Count - 1);
+            readyArrowIds.Add(arrowId);
+
+            if (!wroteAllBranches)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static Dictionary<int, int> BuildIndegreeByArrowId(
+        HashSet<int> arrowIds,
+        Dictionary<int, HashSet<int>> blockageGraph)
+    {
+        Dictionary<int, int> indegreeByArrowId = new Dictionary<int, int>();
+        foreach (int arrowId in arrowIds)
+        {
+            indegreeByArrowId[arrowId] = 0;
+        }
+
+        foreach (KeyValuePair<int, HashSet<int>> entry in blockageGraph)
+        {
+            foreach (int blockedArrowId in entry.Value)
+            {
+                if (indegreeByArrowId.ContainsKey(blockedArrowId))
+                {
+                    indegreeByArrowId[blockedArrowId]++;
+                }
+            }
+        }
+
+        return indegreeByArrowId;
+    }
+
+    private static void WriteSolutionCsvHeader(StreamWriter writer, int arrowCount)
+    {
+        writer.Write("SolutionIndex");
+        for (int i = 1; i <= arrowCount; i++)
+        {
+            writer.Write($",Step{i}");
+        }
+
+        writer.WriteLine();
+    }
+
+    private static void WriteSolutionCsvRow(StreamWriter writer, long solutionIndex, List<int> solutionOrder)
+    {
+        StringBuilder rowBuilder = new StringBuilder();
+        rowBuilder.Append(solutionIndex);
+        for (int i = 0; i < solutionOrder.Count; i++)
+        {
+            rowBuilder.Append(',');
+            rowBuilder.Append(solutionOrder[i]);
+        }
+
+        writer.WriteLine(rowBuilder.ToString());
+    }
+
+    private static void TryDeleteFile(string filePath)
+    {
+        if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    private void CreateGeneratedArrowPreviewVisuals(LevelData levelData)
+    {
+        if (levelData?.arrows == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < levelData.arrows.Count; i++)
+        {
+            ArrowData arrow = levelData.arrows[i];
+            if (arrow == null || arrow.occupiedCells == null || arrow.occupiedCells.Count == 0)
+            {
+                continue;
+            }
+
+            CreateGeneratedArrowPreviewVisual(arrow);
+        }
+    }
+
+    private void CreateGeneratedArrowPreviewVisual(ArrowData arrow)
+    {
+        GameObject arrowObject = new GameObject($"EditorArrow_{arrow.arrowId}_Visual");
+        arrowObject.transform.SetParent(gridRoot);
+        arrowObject.transform.localPosition = Vector3.zero;
+        generatedArrowPreviewVisuals.Add(arrowObject);
+
+        LineRenderer lineRenderer = arrowObject.AddComponent<LineRenderer>();
+        Material material = GetGeneratedArrowLineMaterial();
+        if (material == null)
+        {
+            Debug.LogWarning("LevelEditor generated arrow preview skipped because no line material could be created.");
+            return;
+        }
+
+        lineRenderer.useWorldSpace = true;
+        lineRenderer.material = material;
+        lineRenderer.startColor = arrowBodyColor;
+        lineRenderer.endColor = arrowBodyColor;
+        lineRenderer.startWidth = generatedArrowLineWidth * cellSize;
+        lineRenderer.endWidth = generatedArrowLineWidth * cellSize;
+        lineRenderer.numCornerVertices = Mathf.Max(0, generatedArrowCornerVertices);
+        lineRenderer.numCapVertices = Mathf.Max(0, generatedArrowCapVertices);
+        lineRenderer.textureMode = LineTextureMode.Stretch;
+        lineRenderer.alignment = LineAlignment.View;
+        lineRenderer.sortingOrder = generatedArrowSortingOrder;
+
+        int cellCount = arrow.occupiedCells.Count;
+        lineRenderer.positionCount = cellCount;
+        bool tipIsFirst = IsArrowTipCell(arrow, 0);
+        for (int i = 0; i < cellCount; i++)
+        {
+            GridPositionData cell = tipIsFirst
+                ? arrow.occupiedCells[cellCount - 1 - i]
+                : arrow.occupiedCells[i];
+
+            if (cell == null)
+            {
+                continue;
+            }
+
+            lineRenderer.SetPosition(i, GridToPreviewWorldPosition(cell.x, cell.y, -0.08f));
+        }
+
+        CreateGeneratedArrowPreviewHead(arrow);
+    }
+
+    private void CreateGeneratedArrowPreviewHead(ArrowData arrow)
+    {
+        if (arrow == null || arrow.tipCell == null || arrow.tipDirection == ArrowDirection.None)
+        {
+            return;
+        }
+
+        Vector2Int gridDirection = DirectionToVector(arrow.tipDirection);
+        if (gridDirection == Vector2Int.zero)
+        {
+            return;
+        }
+
+        Vector2 direction = new Vector2(gridDirection.x, gridDirection.y);
+        Vector2 perpendicular = new Vector2(-direction.y, direction.x);
+        float headLength = generatedArrowHeadLength * cellSize;
+        float headWidth = generatedArrowHeadWidth * cellSize;
+
+        Vector3 tipWorld = GridToPreviewWorldPosition(arrow.tipCell.x, arrow.tipCell.y, -0.12f);
+        Vector3 point = new Vector3(direction.x, direction.y, 0f) * (headLength * 0.45f);
+        Vector3 baseCenter = -new Vector3(direction.x, direction.y, 0f) * (headLength * 0.15f);
+        Vector3 left = baseCenter + new Vector3(perpendicular.x, perpendicular.y, 0f) * (headWidth * 0.5f);
+        Vector3 right = baseCenter - new Vector3(perpendicular.x, perpendicular.y, 0f) * (headWidth * 0.5f);
+
+        GameObject headObject = new GameObject($"EditorArrow_{arrow.arrowId}_Head");
+        headObject.transform.SetParent(gridRoot);
+        headObject.transform.position = tipWorld;
+        generatedArrowPreviewVisuals.Add(headObject);
+
+        Mesh mesh = new Mesh
+        {
+            name = $"EditorArrow_{arrow.arrowId}_HeadMesh"
+        };
+
+        mesh.vertices = new[]
+        {
+            point,
+            left,
+            right
+        };
+        mesh.triangles = new[] { 0, 1, 2 };
+        mesh.RecalculateBounds();
+
+        MeshFilter meshFilter = headObject.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = mesh;
+
+        MeshRenderer meshRenderer = headObject.AddComponent<MeshRenderer>();
+        Material headMaterial = CreateGeneratedArrowColorMaterial(arrowTipColor);
+        if (headMaterial == null)
+        {
+            return;
+        }
+
+        meshRenderer.sharedMaterial = headMaterial;
+        meshRenderer.sortingOrder = generatedArrowSortingOrder + 1;
+    }
+
+    private void ClearGeneratedArrowPreviewVisuals()
+    {
+        for (int i = generatedArrowPreviewVisuals.Count - 1; i >= 0; i--)
+        {
+            GameObject previewVisual = generatedArrowPreviewVisuals[i];
+            if (previewVisual == null)
+            {
+                continue;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(previewVisual);
+            }
+            else
+            {
+                DestroyImmediate(previewVisual);
+            }
+        }
+
+        generatedArrowPreviewVisuals.Clear();
+    }
+
+    private Vector3 GridToPreviewWorldPosition(int x, int y, float z)
+    {
+        Vector2 worldPosition = GridToWorldPosition(new Vector2Int(x, y));
+        return new Vector3(worldPosition.x, worldPosition.y, z);
+    }
+
+    private Material GetGeneratedArrowLineMaterial()
+    {
+        if (generatedArrowLineMaterial != null)
+        {
+            return generatedArrowLineMaterial;
+        }
+
+        Shader shader = Shader.Find("Sprites/Default");
+        if (shader == null)
+        {
+            shader = Shader.Find("Universal Render Pipeline/Unlit");
+        }
+
+        if (shader == null)
+        {
+            shader = Shader.Find("Unlit/Color");
+        }
+
+        if (shader == null)
+        {
+            Debug.LogWarning("LevelEditor could not find a shader for generated arrow previews.");
+            return null;
+        }
+
+        generatedArrowLineMaterial = new Material(shader)
+        {
+            name = "Generated_LevelEditorArrowLineMaterial"
+        };
+
+        return generatedArrowLineMaterial;
+    }
+
+    private Material CreateGeneratedArrowColorMaterial(Color color)
+    {
+        Material baseMaterial = GetGeneratedArrowLineMaterial();
+        if (baseMaterial == null)
+        {
+            return null;
+        }
+
+        Material material = new Material(baseMaterial)
+        {
+            name = "Generated_LevelEditorArrowHeadMaterial",
+            color = color
+        };
+
+        return material;
+    }
+
+    private void SnapshotCurrentPaintedCellsAsGenerationInput()
+    {
+        lastGenerationInputPaintedCells.Clear();
+        foreach (Vector2Int position in paintedCells)
+        {
+            lastGenerationInputPaintedCells.Add(position);
+        }
+
+        hasLastGenerationInputPaintedCells = true;
+    }
+
+    private void SnapshotGenerationInputPaintedCells(List<GridPositionData> inputCells)
+    {
+        lastGenerationInputPaintedCells.Clear();
+        if (inputCells != null)
+        {
+            for (int i = 0; i < inputCells.Count; i++)
+            {
+                GridPositionData cell = inputCells[i];
+                if (cell != null)
+                {
+                    lastGenerationInputPaintedCells.Add(new Vector2Int(cell.x, cell.y));
+                }
+            }
+        }
+
+        hasLastGenerationInputPaintedCells = true;
+    }
+
+    private void PaintAllGridCells()
+    {
+        gridSize = Mathf.Max(1, gridSize);
+        paintedCells.Clear();
+
+        for (int y = 0; y < gridSize; y++)
+        {
+            for (int x = 0; x < gridSize; x++)
+            {
+                paintedCells.Add(new Vector2Int(x, y));
+            }
+        }
+    }
+
+    private void RestoreLastGenerationInputPaintedCells()
+    {
+        if (!hasLastGenerationInputPaintedCells)
+        {
+            return;
+        }
+
+        paintedCells.Clear();
+        foreach (Vector2Int position in lastGenerationInputPaintedCells)
+        {
+            paintedCells.Add(position);
+        }
     }
 
     private bool SetDesignedLevelLine(Vector2Int from, Vector2Int to, bool isPainted)
@@ -833,8 +1835,83 @@ public class LevelEditor : MonoBehaviour
         }
 
         return isPainted
-            ? AddOrExtendDesignedArrow(gridPosition)
-            : RemoveDesignedArrowCell(gridPosition);
+            ? HandleDesignedLevelPrimaryClick(gridPosition)
+            : HandleDesignedLevelSecondaryClick(gridPosition);
+    }
+
+    private bool HandleDesignedLevelPrimaryClick(Vector2Int gridPosition)
+    {
+        if (lastGeneratedLevelData == null || !IsInsideGrid(gridPosition))
+        {
+            return false;
+        }
+
+        if (lastGeneratedLevelData.arrows == null)
+        {
+            lastGeneratedLevelData.arrows = new List<ArrowData>();
+        }
+
+        if (TryFindArrowAtGridPosition(gridPosition, out ArrowData clickedArrow, out int clickedCellIndex))
+        {
+            if (IsArrowTipCell(clickedArrow, clickedCellIndex))
+            {
+                if (clickedArrow.occupiedCells != null && clickedArrow.occupiedCells.Count == 1)
+                {
+                    selectedTailArrowId = selectedTailArrowId == clickedArrow.arrowId
+                        ? -1
+                        : clickedArrow.arrowId;
+                }
+                else
+                {
+                    selectedTailArrowId = -1;
+                }
+
+                return false;
+            }
+
+            if (IsArrowTailCell(clickedArrow, clickedCellIndex))
+            {
+                selectedTailArrowId = selectedTailArrowId == clickedArrow.arrowId
+                    ? -1
+                    : clickedArrow.arrowId;
+                return false;
+            }
+
+            selectedTailArrowId = -1;
+            return false;
+        }
+
+        if (!paintedCells.Contains(gridPosition))
+        {
+            return paintedCells.Add(gridPosition);
+        }
+
+        if (TryGetSelectedTailArrow(out ArrowData selectedArrow) && CanExtendSelectedTailTo(selectedArrow, gridPosition))
+        {
+            ExtendSelectedArrowTail(selectedArrow, gridPosition);
+            selectedTailArrowId = selectedArrow.arrowId;
+            return true;
+        }
+
+        ArrowData newArrow = CreateSingleCellManualArrow(gridPosition);
+        lastGeneratedLevelData.arrows.Add(newArrow);
+        selectedTailArrowId = newArrow.arrowId;
+        return true;
+    }
+
+    private bool HandleDesignedLevelSecondaryClick(Vector2Int gridPosition)
+    {
+        if (lastGeneratedLevelData == null || !IsInsideGrid(gridPosition))
+        {
+            return false;
+        }
+
+        if (RemoveDesignedArrowCell(gridPosition))
+        {
+            return true;
+        }
+
+        return paintedCells.Remove(gridPosition);
     }
 
     private bool AddOrExtendDesignedArrow(Vector2Int gridPosition)
@@ -882,20 +1959,54 @@ public class LevelEditor : MonoBehaviour
             return false;
         }
 
-        if (arrow.occupiedCells.Count <= 1)
+        if (IsArrowTipCell(arrow, cellIndex))
         {
             lastGeneratedLevelData.arrows.Remove(arrow);
+            if (selectedTailArrowId == arrow.arrowId)
+            {
+                selectedTailArrowId = -1;
+            }
+
             return true;
         }
 
-        bool removesLeaf = cellIndex == 0 || cellIndex == arrow.occupiedCells.Count - 1;
-        if (!removesLeaf)
+        int tailIndex = GetArrowTailIndex(arrow);
+        if (tailIndex < 0)
         {
             lastGeneratedLevelData.arrows.Remove(arrow);
+            if (selectedTailArrowId == arrow.arrowId)
+            {
+                selectedTailArrowId = -1;
+            }
+
             return true;
         }
 
-        arrow.occupiedCells.RemoveAt(cellIndex);
+        if (cellIndex == tailIndex)
+        {
+            arrow.occupiedCells.RemoveAt(cellIndex);
+        }
+        else if (tailIndex > cellIndex)
+        {
+            int removeCount = tailIndex - cellIndex + 1;
+            arrow.occupiedCells.RemoveRange(cellIndex, removeCount);
+        }
+        else
+        {
+            arrow.occupiedCells.RemoveRange(tailIndex, cellIndex - tailIndex + 1);
+        }
+
+        if (arrow.occupiedCells.Count == 0)
+        {
+            lastGeneratedLevelData.arrows.Remove(arrow);
+            if (selectedTailArrowId == arrow.arrowId)
+            {
+                selectedTailArrowId = -1;
+            }
+
+            return true;
+        }
+
         RepairArrowTip(arrow);
         return true;
     }
@@ -1005,6 +2116,155 @@ public class LevelEditor : MonoBehaviour
         }
     }
 
+    private bool CanExtendSelectedTailTo(ArrowData arrow, Vector2Int gridPosition)
+    {
+        return arrow != null &&
+               paintedCells.Contains(gridPosition) &&
+               !TryFindArrowAtGridPosition(gridPosition, out _, out _) &&
+               TryGetArrowTailPosition(arrow, out Vector2Int tailPosition) &&
+               ManhattanDistance(tailPosition, gridPosition) == 1;
+    }
+
+    private void ExtendSelectedArrowTail(ArrowData arrow, Vector2Int gridPosition)
+    {
+        if (arrow == null || arrow.occupiedCells == null)
+        {
+            return;
+        }
+
+        int tailIndex = GetArrowTailIndex(arrow);
+        GridPositionData newTailCell = new GridPositionData(gridPosition.x, gridPosition.y);
+        if (tailIndex <= 0)
+        {
+            arrow.occupiedCells.Insert(0, newTailCell);
+        }
+        else
+        {
+            arrow.occupiedCells.Add(newTailCell);
+        }
+
+        RepairArrowTip(arrow);
+    }
+
+    private bool TryGetSelectedTailArrow(out ArrowData arrow)
+    {
+        arrow = FindArrowById(selectedTailArrowId);
+        return arrow != null && GetArrowTailIndex(arrow) >= 0;
+    }
+
+    private ArrowData FindArrowById(int arrowId)
+    {
+        if (arrowId < 0 || lastGeneratedLevelData?.arrows == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < lastGeneratedLevelData.arrows.Count; i++)
+        {
+            ArrowData arrow = lastGeneratedLevelData.arrows[i];
+            if (arrow != null && arrow.arrowId == arrowId)
+            {
+                return arrow;
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsSelectedTailPosition(Vector2Int gridPosition)
+    {
+        return TryGetSelectedTailArrow(out ArrowData arrow) &&
+               TryGetArrowTailPosition(arrow, out Vector2Int tailPosition) &&
+               tailPosition == gridPosition;
+    }
+
+    private bool TryGetArrowTailPosition(ArrowData arrow, out Vector2Int tailPosition)
+    {
+        tailPosition = Vector2Int.zero;
+        int tailIndex = GetArrowTailIndex(arrow);
+        if (tailIndex < 0)
+        {
+            return false;
+        }
+
+        tailPosition = ToVector2Int(arrow.occupiedCells[tailIndex]);
+        return true;
+    }
+
+    private bool IsArrowTipCell(ArrowData arrow, int cellIndex)
+    {
+        return arrow != null &&
+               arrow.tipCell != null &&
+               arrow.occupiedCells != null &&
+               cellIndex >= 0 &&
+               cellIndex < arrow.occupiedCells.Count &&
+               arrow.occupiedCells[cellIndex] != null &&
+               arrow.occupiedCells[cellIndex].x == arrow.tipCell.x &&
+               arrow.occupiedCells[cellIndex].y == arrow.tipCell.y;
+    }
+
+    private bool IsArrowTailCell(ArrowData arrow, int cellIndex)
+    {
+        return cellIndex >= 0 && cellIndex == GetArrowTailIndex(arrow);
+    }
+
+    private int GetArrowTailIndex(ArrowData arrow)
+    {
+        if (arrow == null || arrow.occupiedCells == null || arrow.occupiedCells.Count == 0)
+        {
+            return -1;
+        }
+
+        int tipIndex = GetTipPathIndex(arrow);
+        if (arrow.occupiedCells.Count == 1)
+        {
+            return 0;
+        }
+
+        if (tipIndex == 0)
+        {
+            return arrow.occupiedCells.Count - 1;
+        }
+
+        if (tipIndex == arrow.occupiedCells.Count - 1)
+        {
+            return 0;
+        }
+
+        RepairArrowTip(arrow);
+        tipIndex = GetTipPathIndex(arrow);
+        if (tipIndex == 0)
+        {
+            return arrow.occupiedCells.Count - 1;
+        }
+
+        if (tipIndex == arrow.occupiedCells.Count - 1)
+        {
+            return 0;
+        }
+
+        return -1;
+    }
+
+    private int GetTipPathIndex(ArrowData arrow)
+    {
+        if (arrow == null || arrow.tipCell == null || arrow.occupiedCells == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < arrow.occupiedCells.Count; i++)
+        {
+            GridPositionData cell = arrow.occupiedCells[i];
+            if (cell != null && cell.x == arrow.tipCell.x && cell.y == arrow.tipCell.y)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
     private bool TryFindArrowAtGridPosition(Vector2Int gridPosition, out ArrowData arrow, out int cellIndex)
     {
         arrow = null;
@@ -1083,37 +2343,25 @@ public class LevelEditor : MonoBehaviour
         }
 
         arrow.length = arrow.occupiedCells.Count;
-        List<Vector2Int> leaves = GetArrowLeaves(arrow);
+        if (arrow.occupiedCells.Count == 1)
+        {
+            Vector2Int onlyCell = ToVector2Int(arrow.occupiedCells[0]);
+            arrow.tipCell = new GridPositionData(onlyCell.x, onlyCell.y);
+            arrow.tipDirection = ArrowDirection.Up;
+            return;
+        }
 
         if (arrow.tipCell != null)
         {
             Vector2Int currentTip = new Vector2Int(arrow.tipCell.x, arrow.tipCell.y);
-            if (leaves.Contains(currentTip) && IsTipDirectionLegalForArrow(arrow, currentTip, arrow.tipDirection))
+            if (TrySetTipDirectionFromLeaf(arrow, currentTip))
             {
                 return;
             }
         }
 
-        for (int leafIndex = 0; leafIndex < leaves.Count; leafIndex++)
-        {
-            Vector2Int leaf = leaves[leafIndex];
-            for (int directionIndex = 0; directionIndex < ManualTipDirections.Length; directionIndex++)
-            {
-                ArrowDirection direction = ManualTipDirections[directionIndex];
-                if (!IsTipDirectionLegalForArrow(arrow, leaf, direction))
-                {
-                    continue;
-                }
-
-                arrow.tipCell = new GridPositionData(leaf.x, leaf.y);
-                arrow.tipDirection = direction;
-                return;
-            }
-        }
-
-        Vector2Int fallbackLeaf = leaves[0];
-        arrow.tipCell = new GridPositionData(fallbackLeaf.x, fallbackLeaf.y);
-        arrow.tipDirection = ArrowDirection.Up;
+        Vector2Int fallbackTip = ToVector2Int(arrow.occupiedCells[arrow.occupiedCells.Count - 1]);
+        TrySetTipDirectionFromLeaf(arrow, fallbackTip);
     }
 
     private List<Vector2Int> GetArrowLeaves(ArrowData arrow)
@@ -1134,39 +2382,52 @@ public class LevelEditor : MonoBehaviour
         return leaves;
     }
 
-    private bool IsTipDirectionLegalForArrow(ArrowData arrow, Vector2Int tipPosition, ArrowDirection direction)
+    private bool TrySetTipDirectionFromLeaf(ArrowData arrow, Vector2Int tipPosition)
     {
-        if (direction == ArrowDirection.None || arrow?.occupiedCells == null)
+        if (arrow == null || arrow.occupiedCells == null || arrow.occupiedCells.Count < 2)
         {
             return false;
         }
 
-        Vector2Int directionVector = DirectionToVector(direction);
-        if (directionVector == Vector2Int.zero)
+        int tipIndex = -1;
+        for (int i = 0; i < arrow.occupiedCells.Count; i++)
         {
-            return false;
-        }
-
-        Vector2Int cursor = tipPosition + directionVector;
-        while (IsInsideGrid(cursor))
-        {
-            for (int i = 0; i < arrow.occupiedCells.Count; i++)
+            GridPositionData cell = arrow.occupiedCells[i];
+            if (cell != null && cell.x == tipPosition.x && cell.y == tipPosition.y)
             {
-                GridPositionData cell = arrow.occupiedCells[i];
-                if (cell == null || cell.x == tipPosition.x && cell.y == tipPosition.y)
-                {
-                    continue;
-                }
-
-                if (cell.x == cursor.x && cell.y == cursor.y)
-                {
-                    return false;
-                }
+                tipIndex = i;
+                break;
             }
-
-            cursor += directionVector;
         }
 
+        if (tipIndex < 0)
+        {
+            return false;
+        }
+
+        int previousIndex;
+        if (tipIndex == 0)
+        {
+            previousIndex = 1;
+        }
+        else if (tipIndex == arrow.occupiedCells.Count - 1)
+        {
+            previousIndex = arrow.occupiedCells.Count - 2;
+        }
+        else
+        {
+            return false;
+        }
+
+        Vector2Int previousPosition = ToVector2Int(arrow.occupiedCells[previousIndex]);
+        ArrowDirection direction = DirectionFromDelta(tipPosition - previousPosition);
+        if (direction == ArrowDirection.None)
+        {
+            return false;
+        }
+
+        arrow.tipCell = new GridPositionData(tipPosition.x, tipPosition.y);
+        arrow.tipDirection = direction;
         return true;
     }
 
@@ -1194,7 +2455,11 @@ public class LevelEditor : MonoBehaviour
             RepairArrowTip(arrow);
         }
 
-        paintedCells.Clear();
+        if (!TryGetSelectedTailArrow(out _))
+        {
+            selectedTailArrowId = -1;
+        }
+
         lastGeneratedLevelData.shapeCells = new List<GridPositionData>();
         HashSet<Vector2Int> occupiedCells = new HashSet<Vector2Int>();
         for (int arrowIndex = 0; arrowIndex < lastGeneratedLevelData.arrows.Count; arrowIndex++)
@@ -1214,7 +2479,6 @@ public class LevelEditor : MonoBehaviour
                     continue;
                 }
 
-                paintedCells.Add(position);
                 lastGeneratedLevelData.shapeCells.Add(new GridPositionData(position.x, position.y));
             }
         }
@@ -1232,6 +2496,31 @@ public class LevelEditor : MonoBehaviour
     private static int ManhattanDistance(Vector2Int first, Vector2Int second)
     {
         return Mathf.Abs(first.x - second.x) + Mathf.Abs(first.y - second.y);
+    }
+
+    private static ArrowDirection DirectionFromDelta(Vector2Int delta)
+    {
+        if (delta == Vector2Int.up)
+        {
+            return ArrowDirection.Up;
+        }
+
+        if (delta == Vector2Int.down)
+        {
+            return ArrowDirection.Down;
+        }
+
+        if (delta == Vector2Int.left)
+        {
+            return ArrowDirection.Left;
+        }
+
+        if (delta == Vector2Int.right)
+        {
+            return ArrowDirection.Right;
+        }
+
+        return ArrowDirection.None;
     }
 
     private static Vector2Int DirectionToVector(ArrowDirection direction)
@@ -1287,6 +2576,11 @@ public class LevelEditor : MonoBehaviour
         if (levelData.arrows == null)
         {
             levelData.arrows = new List<ArrowData>();
+        }
+
+        for (int i = 0; i < levelData.arrows.Count; i++)
+        {
+            RepairArrowTip(levelData.arrows[i]);
         }
 
         ApplyArrowDataToVertices(levelData);
@@ -1417,6 +2711,11 @@ public class LevelEditor : MonoBehaviour
         return Path.Combine(Application.dataPath, NormalizeResourcesPath(outputFolderRelativeToResources));
     }
 
+    private static string GetSolutionsFolderPath()
+    {
+        return Path.Combine(Application.dataPath, "Resources", "Solutions");
+    }
+
     private static int GetNextLevelVariantIndex(string folderPath, int baseLevelIndex)
     {
         if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
@@ -1476,6 +2775,11 @@ public class LevelEditor : MonoBehaviour
         return $"Level_{baseLevelIndex}_{variantIndex}.json";
     }
 
+    private static string BuildSolutionVariantFileName(int baseLevelIndex, int variantIndex)
+    {
+        return $"Solution_{baseLevelIndex}_{variantIndex}.csv";
+    }
+
     private static string NormalizeResourcesPath(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -1485,6 +2789,13 @@ public class LevelEditor : MonoBehaviour
 
         return path.Trim().Trim('/').Trim('\\').Replace("\\", "/");
     }
+}
+
+public enum LevelGenerationAlgorithmMode
+{
+    ExactCover,
+    PartialCover,
+    PartialExactCover
 }
 
 [Serializable]
@@ -1502,5 +2813,6 @@ public class EditorGenerationRequest
     public int maxSearchIterations;
     public float maxGenerationSeconds;
     public int maxCandidatesPerSearchState;
+    public float partialCoverTargetPercent;
     public List<GridPositionData> paintedCells = new List<GridPositionData>();
 }

@@ -231,8 +231,8 @@ Camera:
   m_GameObject: {fileID: 802435989}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.7593663, g: 0.7854408, b: 0.82641506, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -364,22 +364,16 @@ MonoBehaviour:
   tilePrefab: {fileID: 417003067280566668, guid: a0e6e38a428914449a59fc01e81e1aa1, type: 3}
   levelRoot: {fileID: 671833364}
   generateLevelOnStart: 1
-  startingLevelIndex: 28
+  startingLevelIndex: 40
   startingLevelVariantIndex: 1
   resourcesLevelsFolder: Levels
   cellSize: 1
   runtimeTileFillScale: 1
+  showTileBackgrounds: 0
   emptyColor: {r: 1, g: 1, b: 1, a: 1}
   occupiedCellBackgroundColor: {r: 1, g: 1, b: 1, a: 1}
-  arrowBodyColor: {r: 1, g: 1, b: 1, a: 1}
-  arrowTipColor: {r: 1, g: 1, b: 1, a: 1}
-  usePerArrowColors: 1
-  arrowColorPalette:
-  - {r: 0.75, g: 0.75, b: 0.75, a: 1}
-  - {r: 0.95, g: 0.38, b: 0.65, a: 1}
-  - {r: 0.55, g: 0.82, b: 0.35, a: 1}
-  - {r: 0.18, g: 0.65, b: 1, a: 1}
-  - {r: 1, g: 0.78, b: 0.25, a: 1}
+  arrowBodyColor: {r: 0, g: 0, b: 0, a: 1}
+  arrowTipColor: {r: 0, g: 0, b: 0, a: 1}
   useConnectedArrowSprites: 1
   arrowTipSprite: {fileID: -3913914158837853926, guid: 523a2d195e4a7154194b1cfa9ea4ab4f, type: 3}
   arrowBodyStraightSprite: {fileID: 2300315203754384634, guid: 7c1bd99fc53c4da43ab6a6899c2b8f49, type: 3}

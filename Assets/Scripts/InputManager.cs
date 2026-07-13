@@ -101,28 +101,49 @@ public class InputManager : MonoBehaviour
         LevelEditor levelEditor = LevelEditor.ActiveInstance;
         bool handledPrimaryInput = false;
 
-        if (IsPrimaryTouchPressed())
+        if (levelEditor.HasDisplayedGeneratedLevel)
         {
-            levelEditor.HandlePrimaryPaintInput(ScreenToWorld(Touchscreen.current.primaryTouch.position.ReadValue()));
-            handledPrimaryInput = true;
+            if (WasPrimaryTouchPressedThisFrame())
+            {
+                levelEditor.HandlePrimaryPaintInput(ScreenToWorld(Touchscreen.current.primaryTouch.position.ReadValue()));
+                handledPrimaryInput = true;
+            }
+
+            if (!handledPrimaryInput && WasLeftMousePressedThisFrame())
+            {
+                levelEditor.HandlePrimaryPaintInput(ScreenToWorld(Mouse.current.position.ReadValue()));
+            }
+
+            if (WasRightMousePressedThisFrame())
+            {
+                levelEditor.HandleSecondaryPaintInput(ScreenToWorld(Mouse.current.position.ReadValue()));
+            }
         }
-
-        bool leftMousePressed = IsLeftMousePressed();
-        bool rightMousePressed = IsRightMousePressed();
-
-        if (!handledPrimaryInput && leftMousePressed)
+        else
         {
-            levelEditor.HandlePrimaryPaintInput(ScreenToWorld(Mouse.current.position.ReadValue()));
-        }
+            if (IsPrimaryTouchPressed())
+            {
+                levelEditor.HandlePrimaryPaintInput(ScreenToWorld(Touchscreen.current.primaryTouch.position.ReadValue()));
+                handledPrimaryInput = true;
+            }
 
-        if (rightMousePressed)
-        {
-            levelEditor.HandleSecondaryPaintInput(ScreenToWorld(Mouse.current.position.ReadValue()));
-        }
+            bool leftMousePressed = IsLeftMousePressed();
+            bool rightMousePressed = IsRightMousePressed();
 
-        if (!handledPrimaryInput && !leftMousePressed && !rightMousePressed)
-        {
-            levelEditor.EndPaintDrag();
+            if (!handledPrimaryInput && leftMousePressed)
+            {
+                levelEditor.HandlePrimaryPaintInput(ScreenToWorld(Mouse.current.position.ReadValue()));
+            }
+
+            if (rightMousePressed)
+            {
+                levelEditor.HandleSecondaryPaintInput(ScreenToWorld(Mouse.current.position.ReadValue()));
+            }
+
+            if (!handledPrimaryInput && !leftMousePressed && !rightMousePressed)
+            {
+                levelEditor.EndPaintDrag();
+            }
         }
 
         Keyboard keyboard = Keyboard.current;

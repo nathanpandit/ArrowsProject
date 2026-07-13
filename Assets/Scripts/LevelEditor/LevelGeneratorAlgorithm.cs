@@ -355,13 +355,6 @@ public static class LevelGeneratorAlgorithm
 
         if (length == 1)
         {
-            List<GeneratorCell> singleCellPath = new List<GeneratorCell> { tipCell };
-            if (!DoesArrowBlockItself(singleCellPath, direction, context.GridSize) &&
-                CandidateLeavesFeasibleRemainder(state, context, singleCellPath))
-            {
-                AddCandidate(context, state.PlacedArrows.Count + 1, singleCellPath, tipCell, direction, candidates, candidateIds);
-            }
-
             return;
         }
 
@@ -911,7 +904,7 @@ public static class LevelGeneratorAlgorithm
             return false;
         }
 
-        if (arrow.Cells == null || arrow.Cells.Count < minLength || arrow.Cells.Count > maxLength)
+        if (arrow.Cells == null || arrow.Cells.Count < minLength || arrow.Cells.Count > maxLength || arrow.Cells.Count < 2)
         {
             return false;
         }
@@ -936,13 +929,10 @@ public static class LevelGeneratorAlgorithm
             }
         }
 
-        if (arrow.Cells.Count > 1)
+        GeneratorCell expectedFirstBodyCell = arrow.TipCell - DirectionToVector(arrow.Direction);
+        if (arrow.Cells[1] != expectedFirstBodyCell)
         {
-            GeneratorCell expectedFirstBodyCell = arrow.TipCell - DirectionToVector(arrow.Direction);
-            if (arrow.Cells[1] != expectedFirstBodyCell)
-            {
-                return false;
-            }
+            return false;
         }
 
         return !DoesArrowBlockItself(arrow.Cells, arrow.Direction, gridSize);

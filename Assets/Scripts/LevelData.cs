@@ -70,6 +70,31 @@ public class LevelData
         return null;
     }
 
+    private static ArrowDirection DirectionFromDelta(int deltaX, int deltaY)
+    {
+        if (deltaX == 1 && deltaY == 0)
+        {
+            return ArrowDirection.Right;
+        }
+
+        if (deltaX == -1 && deltaY == 0)
+        {
+            return ArrowDirection.Left;
+        }
+
+        if (deltaX == 0 && deltaY == 1)
+        {
+            return ArrowDirection.Up;
+        }
+
+        if (deltaX == 0 && deltaY == -1)
+        {
+            return ArrowDirection.Down;
+        }
+
+        return ArrowDirection.None;
+    }
+
     public bool Validate()
     {
         bool isValid = true;
@@ -275,6 +300,7 @@ public class LevelData
             }
 
             bool tipIsInOccupiedCells = false;
+            int tipCellIndex = -1;
             for (int cellIndex = 0; cellIndex < arrow.occupiedCells.Count; cellIndex++)
             {
                 GridPositionData cell = arrow.occupiedCells[cellIndex];
@@ -305,6 +331,7 @@ public class LevelData
                 if (arrow.tipCell != null && cell.x == arrow.tipCell.x && cell.y == arrow.tipCell.y)
                 {
                     tipIsInOccupiedCells = true;
+                    tipCellIndex = cellIndex;
                 }
 
                 VertexData occupiedVertex = GetVertexAt(cell.x, cell.y);
@@ -324,6 +351,41 @@ public class LevelData
             {
                 Debug.LogError($"LevelData validation failed: arrow {arrow.arrowId} tip cell is not in occupiedCells.");
                 isValid = false;
+            }
+
+            if (arrow.occupiedCells.Count < 2)
+            {
+                Debug.LogError($"LevelData validation failed: arrow {arrow.arrowId} must have at least two cells so the tip direction can be inferred.");
+                isValid = false;
+            }
+            else if (tipIsInOccupiedCells)
+            {
+                if (tipCellIndex != 0 && tipCellIndex != arrow.occupiedCells.Count - 1)
+                {
+                    Debug.LogError($"LevelData validation failed: arrow {arrow.arrowId} tip cell must be at a path leaf.");
+                    isValid = false;
+                }
+                else
+                {
+                    int previousIndex = tipCellIndex == 0 ? 1 : arrow.occupiedCells.Count - 2;
+                    GridPositionData previousCell = arrow.occupiedCells[previousIndex];
+                    if (previousCell == null)
+                    {
+                        Debug.LogError($"LevelData validation failed: arrow {arrow.arrowId} has no valid cell before its tip.");
+                        isValid = false;
+                        continue;
+                    }
+
+                    ArrowDirection inferredDirection = DirectionFromDelta(
+                        arrow.tipCell.x - previousCell.x,
+                        arrow.tipCell.y - previousCell.y);
+
+                    if (inferredDirection == ArrowDirection.None || arrow.tipDirection != inferredDirection)
+                    {
+                        Debug.LogError($"LevelData validation failed: arrow {arrow.arrowId} tip direction must match the final path segment into the tip.");
+                        isValid = false;
+                    }
+                }
             }
 
             tipCountByArrowId.TryGetValue(arrow.arrowId, out int tipCount);
