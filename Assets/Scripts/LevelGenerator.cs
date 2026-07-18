@@ -80,37 +80,57 @@ public class LevelGenerator : MonoBehaviour
     {
         int normalizedLevelIndex = Mathf.Max(1, levelIndex);
         int normalizedVariantIndex = Mathf.Max(1, levelVariantIndex);
-        string resourcePath = BuildVariantResourcePath(normalizedLevelIndex, normalizedVariantIndex);
-
-        if (!TryGenerateLevelFromResourcePath(resourcePath, normalizedLevelIndex, normalizedVariantIndex))
+        if (TryGenerateLevelFromResourcePath(BuildVariantResourcePath(normalizedLevelIndex, normalizedVariantIndex), normalizedLevelIndex, normalizedVariantIndex))
         {
-            Debug.LogError($"LevelGenerator could not load Resources/{resourcePath}.json.");
+            return;
         }
+
+        if (TryFindNextExistingLevel(normalizedLevelIndex, normalizedVariantIndex, out int nextLevelIndex, out int nextVariantIndex) &&
+            TryGenerateLevelFromResourcePath(BuildVariantResourcePath(nextLevelIndex, nextVariantIndex), nextLevelIndex, nextVariantIndex))
+        {
+            Debug.LogWarning($"LevelGenerator skipped missing level {normalizedLevelIndex}_{normalizedVariantIndex} and loaded {nextLevelIndex}_{nextVariantIndex}.");
+            return;
+        }
+
+        if (TryFindPreviousExistingLevel(normalizedLevelIndex, normalizedVariantIndex, out int previousLevelIndex, out int previousVariantIndex) &&
+            TryGenerateLevelFromResourcePath(BuildVariantResourcePath(previousLevelIndex, previousVariantIndex), previousLevelIndex, previousVariantIndex))
+        {
+            Debug.LogWarning($"LevelGenerator skipped missing level {normalizedLevelIndex}_{normalizedVariantIndex} and loaded {previousLevelIndex}_{previousVariantIndex}.");
+            return;
+        }
+
+        Debug.LogError($"LevelGenerator could not load Resources/{BuildVariantResourcePath(normalizedLevelIndex, normalizedVariantIndex)}.json and could not find any fallback level.");
     }
 
     public void GenerateNextLevel()
     {
-        int nextVariantIndex = currentLevelVariantIndex + 1;
-        if (DoesLevelResourceExist(currentLevelIndex, nextVariantIndex))
+        if (TryFindNextExistingLevel(currentLevelIndex, currentLevelVariantIndex + 1, out int nextLevelIndex, out int nextVariantIndex))
         {
-            GenerateLevelFromResources(currentLevelIndex, nextVariantIndex);
+            GenerateExactLevelFromResources(nextLevelIndex, nextVariantIndex);
             return;
         }
 
-        GenerateLevelFromResources(currentLevelIndex + 1, 1);
+        Debug.LogWarning("LevelGenerator could not find a next level.");
     }
 
     public void GeneratePreviousLevel()
     {
-        if (currentLevelVariantIndex > 1)
+        if (TryFindPreviousExistingLevel(currentLevelIndex, currentLevelVariantIndex - 1, out int previousLevelIndex, out int previousVariantIndex))
         {
-            GenerateLevelFromResources(currentLevelIndex, currentLevelVariantIndex - 1);
+            GenerateExactLevelFromResources(previousLevelIndex, previousVariantIndex);
             return;
         }
 
-        int previousLevelIndex = Mathf.Max(1, currentLevelIndex - 1);
-        int previousVariantIndex = FindHighestExistingVariantIndex(previousLevelIndex);
-        GenerateLevelFromResources(previousLevelIndex, Mathf.Max(1, previousVariantIndex));
+        Debug.LogWarning("LevelGenerator could not find a previous level.");
+    }
+
+    private void GenerateExactLevelFromResources(int levelIndex, int levelVariantIndex)
+    {
+        string resourcePath = BuildVariantResourcePath(levelIndex, levelVariantIndex);
+        if (!TryGenerateLevelFromResourcePath(resourcePath, levelIndex, levelVariantIndex))
+        {
+            Debug.LogError($"LevelGenerator could not load Resources/{resourcePath}.json.");
+        }
     }
 
     private bool TryGenerateLevelFromResourcePath(string resourcePath, int levelIndex, int levelVariantIndex)
@@ -174,6 +194,63 @@ public class LevelGenerator : MonoBehaviour
         }
 
         return highestVariantIndex;
+    }
+
+    private bool TryFindNextExistingLevel(int startLevelIndex, int startVariantIndex, out int levelIndex, out int variantIndex)
+    {
+        int normalizedStartLevelIndex = Mathf.Max(1, startLevelIndex);
+        int normalizedStartVariantIndex = Mathf.Max(1, startVariantIndex);
+
+        for (int candidateLevelIndex = normalizedStartLevelIndex; candidateLevelIndex <= MaxLevelVariantScan; candidateLevelIndex++)
+        {
+            int firstVariantIndex = candidateLevelIndex == normalizedStartLevelIndex ? normalizedStartVariantIndex : 1;
+            int highestVariantIndex = FindHighestExistingVariantIndex(candidateLevelIndex);
+            if (highestVariantIndex <= 0 || firstVariantIndex > highestVariantIndex)
+            {
+                continue;
+            }
+
+            for (int candidateVariantIndex = firstVariantIndex; candidateVariantIndex <= highestVariantIndex; candidateVariantIndex++)
+            {
+                if (DoesLevelResourceExist(candidateLevelIndex, candidateVariantIndex))
+                {
+                    levelIndex = candidateLevelIndex;
+                    variantIndex = candidateVariantIndex;
+                    return true;
+                }
+            }
+        }
+
+        levelIndex = 0;
+        variantIndex = 0;
+        return false;
+    }
+
+    private bool TryFindPreviousExistingLevel(int startLevelIndex, int startVariantIndex, out int levelIndex, out int variantIndex)
+    {
+        int normalizedStartLevelIndex = Mathf.Max(1, startLevelIndex);
+        int normalizedStartVariantIndex = Mathf.Max(1, startVariantIndex);
+
+        for (int candidateLevelIndex = normalizedStartLevelIndex; candidateLevelIndex >= 1; candidateLevelIndex--)
+        {
+            int firstVariantIndex = candidateLevelIndex == normalizedStartLevelIndex
+                ? Mathf.Min(MaxLevelVariantScan, normalizedStartVariantIndex)
+                : FindHighestExistingVariantIndex(candidateLevelIndex);
+
+            for (int candidateVariantIndex = firstVariantIndex; candidateVariantIndex >= 1; candidateVariantIndex--)
+            {
+                if (DoesLevelResourceExist(candidateLevelIndex, candidateVariantIndex))
+                {
+                    levelIndex = candidateLevelIndex;
+                    variantIndex = candidateVariantIndex;
+                    return true;
+                }
+            }
+        }
+
+        levelIndex = 0;
+        variantIndex = 0;
+        return false;
     }
 
     public void GenerateLevel(LevelData levelData)

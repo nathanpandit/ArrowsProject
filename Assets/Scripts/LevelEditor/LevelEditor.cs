@@ -23,6 +23,18 @@ public class LevelEditor : MonoBehaviour
     [SerializeField, Min(0)] private int shooterSlotCount;
     [SerializeField] private List<ShooterSlotData> shooterSlots = new List<ShooterSlotData>();
 
+    [Header("Arrow Colors")]
+    [Tooltip("Generated arrows will only use these colors. Add/remove entries and choose each entry from the dropdown.")]
+    [SerializeField] private List<ArrowColorChoice> levelGenerationColors = new List<ArrowColorChoice>
+    {
+        ArrowColorChoice.Red,
+        ArrowColorChoice.Blue,
+        ArrowColorChoice.Green,
+        ArrowColorChoice.Yellow,
+        ArrowColorChoice.Pink,
+        ArrowColorChoice.Gray
+    };
+
     [Header("Grid")]
     [SerializeField] private float cellSize = 1f;
     [SerializeField] private Vector2 originOffset;
@@ -131,6 +143,7 @@ public class LevelEditor : MonoBehaviour
     private void OnValidate()
     {
         conveyorBeltCapacity = Mathf.Max(1, conveyorBeltCapacity);
+        NormalizeLevelGenerationColors();
         NormalizeShooterSlotInspectorData();
     }
 
@@ -255,6 +268,13 @@ public class LevelEditor : MonoBehaviour
         conveyorBeltCapacity = loadedData.GetConveyorBeltCapacity();
         shooterSlotCount = Mathf.Max(0, loadedData.shooterSlotCount);
         shooterSlots = CloneShooterSlots(loadedData.shooterSlots, shooterSlotCount);
+        levelGenerationColors = CloneLevelColors(loadedData.levelColors);
+        if (levelGenerationColors.Count == 0)
+        {
+            levelGenerationColors = BuildLevelColorsFromArrows(loadedData);
+        }
+
+        NormalizeLevelGenerationColors();
         NormalizeShooterSlotInspectorData();
         lastGeneratedLevelData = loadedData;
         ClearSelectedEndpoint();
@@ -667,6 +687,7 @@ public class LevelEditor : MonoBehaviour
             conveyorBeltCapacity = Mathf.Max(1, conveyorBeltCapacity),
             shooterSlotCount = Mathf.Max(0, shooterSlotCount),
             shooterSlots = CloneShooterSlots(shooterSlots, Mathf.Max(0, shooterSlotCount)),
+            levelColors = CloneLevelColors(levelGenerationColors),
             arrows = new List<ArrowData>(),
             shapeCells = new List<GridPositionData>(),
             createdAt = DateTime.UtcNow.ToString("o"),
@@ -1827,6 +1848,34 @@ public class LevelEditor : MonoBehaviour
             : ArrowColorUtility.GetColor(arrow.colorIndex, arrowBodyColor);
     }
 
+    private void NormalizeLevelGenerationColors()
+    {
+        if (levelGenerationColors == null)
+        {
+            levelGenerationColors = new List<ArrowColorChoice>();
+        }
+
+        HashSet<ArrowColorChoice> seenColors = new HashSet<ArrowColorChoice>();
+        for (int i = levelGenerationColors.Count - 1; i >= 0; i--)
+        {
+            ArrowColorChoice color = ArrowColorUtility.ToColorChoice(ArrowColorUtility.ToColorIndex(levelGenerationColors[i]));
+            if (!seenColors.Add(color))
+            {
+                levelGenerationColors.RemoveAt(i);
+                continue;
+            }
+
+            levelGenerationColors[i] = color;
+        }
+
+        if (levelGenerationColors.Count == 0)
+        {
+            levelGenerationColors.Add(ArrowColorChoice.Red);
+            levelGenerationColors.Add(ArrowColorChoice.Blue);
+            levelGenerationColors.Add(ArrowColorChoice.Green);
+        }
+    }
+
     private void NormalizeShooterSlotInspectorData()
     {
         shooterSlotCount = Mathf.Max(0, shooterSlotCount);
@@ -1868,10 +1917,56 @@ public class LevelEditor : MonoBehaviour
                     slot.shooters[shooterIndex] = shooter;
                 }
 
-                shooter.colorNumber = Mathf.Max(1, shooter.colorNumber);
+                shooter.color = ArrowColorUtility.ToColorChoice(shooter.GetColorIndex());
                 shooter.ammoCapacity = Mathf.Max(0, shooter.ammoCapacity);
             }
         }
+    }
+
+    private static List<ArrowColorChoice> CloneLevelColors(List<ArrowColorChoice> sourceColors)
+    {
+        List<ArrowColorChoice> clonedColors = new List<ArrowColorChoice>();
+        if (sourceColors == null)
+        {
+            return clonedColors;
+        }
+
+        for (int i = 0; i < sourceColors.Count; i++)
+        {
+            ArrowColorChoice color = ArrowColorUtility.ToColorChoice(ArrowColorUtility.ToColorIndex(sourceColors[i]));
+            if (!clonedColors.Contains(color))
+            {
+                clonedColors.Add(color);
+            }
+        }
+
+        return clonedColors;
+    }
+
+    private static List<ArrowColorChoice> BuildLevelColorsFromArrows(LevelData levelData)
+    {
+        List<ArrowColorChoice> colors = new List<ArrowColorChoice>();
+        if (levelData?.arrows == null)
+        {
+            return colors;
+        }
+
+        for (int i = 0; i < levelData.arrows.Count; i++)
+        {
+            ArrowData arrow = levelData.arrows[i];
+            if (arrow == null || arrow.colorIndex < 0)
+            {
+                continue;
+            }
+
+            ArrowColorChoice color = ArrowColorUtility.ToColorChoice(arrow.colorIndex);
+            if (!colors.Contains(color))
+            {
+                colors.Add(color);
+            }
+        }
+
+        return colors;
     }
 
     private static List<ShooterSlotData> CloneShooterSlots(List<ShooterSlotData> sourceSlots, int slotCount)
@@ -1902,7 +1997,7 @@ public class LevelEditor : MonoBehaviour
 
                     clonedSlot.shooters.Add(new ShooterData
                     {
-                        colorNumber = Mathf.Max(1, sourceShooter.colorNumber),
+                        color = ArrowColorUtility.ToColorChoice(sourceShooter.GetColorIndex()),
                         ammoCapacity = Mathf.Max(0, sourceShooter.ammoCapacity)
                     });
                 }
@@ -2877,6 +2972,7 @@ public class LevelEditor : MonoBehaviour
         NormalizeShooterSlotInspectorData();
         levelData.shooterSlotCount = Mathf.Max(0, shooterSlotCount);
         levelData.shooterSlots = CloneShooterSlots(shooterSlots, levelData.shooterSlotCount);
+        levelData.levelColors = CloneLevelColors(levelGenerationColors);
         levelData.createdAt = string.IsNullOrWhiteSpace(levelData.createdAt) ? DateTime.UtcNow.ToString("o") : levelData.createdAt;
         levelData.notes = string.IsNullOrWhiteSpace(levelData.notes) ? "Generated from painted LevelEditor mask." : levelData.notes;
 
@@ -2908,7 +3004,8 @@ public class LevelEditor : MonoBehaviour
             RepairArrowTip(levelData.arrows[i]);
         }
 
-        ArrowColorUtility.AssignMissingDistinctAdjacentColorIndices(levelData);
+        NormalizeLevelGenerationColors();
+        ArrowColorUtility.AssignMissingDistinctAdjacentColorIndices(levelData, levelGenerationColors);
 
         ApplyArrowDataToVertices(levelData);
 

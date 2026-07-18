@@ -41,6 +41,23 @@ public static class ArrowColorUtility
 
     public static int ManualColorCount => DefaultPalette.Length;
 
+    public static int ToColorIndex(ArrowColorChoice colorChoice)
+    {
+        int colorIndex = (int)colorChoice - 1;
+        return IsManualColorIndex(colorIndex) ? colorIndex : DefaultColorIndex;
+    }
+
+    public static ArrowColorChoice ToColorChoice(int colorIndex)
+    {
+        int normalizedColorIndex = IsManualColorIndex(colorIndex) ? colorIndex : DefaultColorIndex;
+        return (ArrowColorChoice)(normalizedColorIndex + 1);
+    }
+
+    public static bool IsManualColorIndex(int colorIndex)
+    {
+        return colorIndex >= 0 && colorIndex < DefaultPalette.Length;
+    }
+
     public static bool TryGetManualColorIndex(int numberKey, out int colorIndex)
     {
         colorIndex = numberKey - 1;
@@ -97,15 +114,25 @@ public static class ArrowColorUtility
 
     public static void AssignMissingDistinctAdjacentColorIndices(LevelData levelData)
     {
-        AssignDistinctAdjacentColorIndices(levelData, false);
+        AssignDistinctAdjacentColorIndices(levelData, false, null);
+    }
+
+    public static void AssignMissingDistinctAdjacentColorIndices(LevelData levelData, IList<ArrowColorChoice> allowedColors)
+    {
+        AssignDistinctAdjacentColorIndices(levelData, false, allowedColors);
     }
 
     public static void ReassignDistinctAdjacentColorIndices(LevelData levelData)
     {
-        AssignDistinctAdjacentColorIndices(levelData, true);
+        AssignDistinctAdjacentColorIndices(levelData, true, null);
     }
 
-    private static void AssignDistinctAdjacentColorIndices(LevelData levelData, bool overwriteExistingColors)
+    public static void ReassignDistinctAdjacentColorIndices(LevelData levelData, IList<ArrowColorChoice> allowedColors)
+    {
+        AssignDistinctAdjacentColorIndices(levelData, true, allowedColors);
+    }
+
+    private static void AssignDistinctAdjacentColorIndices(LevelData levelData, bool overwriteExistingColors, IList<ArrowColorChoice> allowedColors)
     {
         Dictionary<int, HashSet<int>> adjacencyByArrowId = BuildArrowAdjacency(levelData, out List<int> arrowIds);
         if (levelData?.arrows == null || arrowIds.Count == 0)
@@ -113,6 +140,7 @@ public static class ArrowColorUtility
             return;
         }
 
+        List<int> allowedColorIndices = BuildAllowedColorIndices(allowedColors);
         Dictionary<int, ArrowData> arrowById = new Dictionary<int, ArrowData>();
         Dictionary<int, int> colorIndexByArrowId = new Dictionary<int, int>();
         for (int i = 0; i < levelData.arrows.Count; i++)
@@ -126,6 +154,11 @@ public static class ArrowColorUtility
             arrowById[arrow.arrowId] = arrow;
             if (!overwriteExistingColors && arrow.colorIndex >= 0)
             {
+                if (!allowedColorIndices.Contains(arrow.colorIndex))
+                {
+                    arrow.colorIndex = allowedColorIndices[0];
+                }
+
                 colorIndexByArrowId[arrow.arrowId] = arrow.colorIndex;
             }
         }
@@ -151,34 +184,69 @@ public static class ArrowColorUtility
                 continue;
             }
 
-            int selectedColorIndex = FindFirstNonConflictingColorIndex(arrowId, adjacencyByArrowId, colorIndexByArrowId, arrowIds.Count);
+            int selectedColorIndex = FindFirstNonConflictingColorIndex(arrowId, adjacencyByArrowId, colorIndexByArrowId, allowedColorIndices);
             arrow.colorIndex = selectedColorIndex;
             colorIndexByArrowId[arrowId] = selectedColorIndex;
         }
+    }
+
+    private static List<int> BuildAllowedColorIndices(IList<ArrowColorChoice> allowedColors)
+    {
+        List<int> colorIndices = new List<int>();
+        if (allowedColors != null)
+        {
+            for (int i = 0; i < allowedColors.Count; i++)
+            {
+                int colorIndex = ToColorIndex(allowedColors[i]);
+                if (!colorIndices.Contains(colorIndex))
+                {
+                    colorIndices.Add(colorIndex);
+                }
+            }
+        }
+
+        if (colorIndices.Count == 0)
+        {
+            for (int colorIndex = 0; colorIndex < DefaultPalette.Length; colorIndex++)
+            {
+                colorIndices.Add(colorIndex);
+            }
+        }
+
+        return colorIndices;
     }
 
     private static int FindFirstNonConflictingColorIndex(
         int arrowId,
         Dictionary<int, HashSet<int>> adjacencyByArrowId,
         Dictionary<int, int> colorIndexByArrowId,
-        int arrowCount)
+        List<int> allowedColorIndices)
     {
-        int candidateLimit = Mathf.Max(DefaultPalette.Length, arrowCount);
-        for (int colorIndex = 0; colorIndex < candidateLimit; colorIndex++)
+        if (allowedColorIndices == null || allowedColorIndices.Count == 0)
         {
+            return DefaultColorIndex;
+        }
+
+        int selectedColorIndex = allowedColorIndices[0];
+        int selectedConflictCount = int.MaxValue;
+        for (int i = 0; i < allowedColorIndices.Count; i++)
+        {
+            int colorIndex = allowedColorIndices[i];
             if (!ConflictsWithColoredNeighbor(arrowId, colorIndex, adjacencyByArrowId, colorIndexByArrowId))
             {
                 return colorIndex;
             }
+
+            int conflictCount = CountColoredNeighborConflicts(arrowId, colorIndex, adjacencyByArrowId, colorIndexByArrowId);
+            if (conflictCount < selectedConflictCount)
+            {
+                selectedConflictCount = conflictCount;
+                selectedColorIndex = colorIndex;
+            }
         }
 
-        int generatedColorIndex = candidateLimit;
-        while (ConflictsWithColoredNeighbor(arrowId, generatedColorIndex, adjacencyByArrowId, colorIndexByArrowId))
-        {
-            generatedColorIndex++;
-        }
-
-        return generatedColorIndex;
+        Debug.LogWarning($"ArrowColorUtility could not avoid all adjacent color conflicts with the selected level color set. Using {GetColorName(selectedColorIndex)} as a best effort.");
+        return selectedColorIndex;
     }
 
     private static bool ConflictsWithColoredNeighbor(
@@ -202,6 +270,30 @@ public static class ArrowColorUtility
         }
 
         return false;
+    }
+
+    private static int CountColoredNeighborConflicts(
+        int arrowId,
+        int candidateColorIndex,
+        Dictionary<int, HashSet<int>> adjacencyByArrowId,
+        Dictionary<int, int> colorIndexByArrowId)
+    {
+        int conflictCount = 0;
+        if (!adjacencyByArrowId.TryGetValue(arrowId, out HashSet<int> neighborIds))
+        {
+            return conflictCount;
+        }
+
+        foreach (int neighborId in neighborIds)
+        {
+            if (colorIndexByArrowId.TryGetValue(neighborId, out int neighborColorIndex) &&
+                neighborColorIndex == candidateColorIndex)
+            {
+                conflictCount++;
+            }
+        }
+
+        return conflictCount;
     }
 
     public static Dictionary<int, Color> AssignDistinctAdjacentColors(LevelData levelData, IList<Color> basePalette, Color fallbackColor)

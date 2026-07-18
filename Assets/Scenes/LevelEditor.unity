@@ -363,8 +363,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d7c57c2cb7df7c439dd607636e1bbdb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelEditor
-  gridSize: 8
-  levelIndex: 44
+  gridSize: 10
+  levelIndex: 46
   minArrowCount: 10
   maxArrowCount: 40
   minArrowLength: 2
@@ -375,6 +375,7 @@ MonoBehaviour:
   shooterSlots:
   - shooters: []
   - shooters: []
+  levelGenerationColors: 010000000200000003000000040000000500000006000000
   cellSize: 1
   originOffset: {x: 0, y: 0}
   gridRoot: {fileID: 498930730}

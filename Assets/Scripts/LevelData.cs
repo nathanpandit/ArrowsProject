@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public enum CellContentType
 {
@@ -16,6 +17,19 @@ public enum ArrowDirection
     Down,
     Left,
     Right
+}
+
+public enum ArrowColorChoice
+{
+    Red = 1,
+    Blue = 2,
+    Green = 3,
+    Yellow = 4,
+    Pink = 5,
+    Gray = 6,
+    Purple = 7,
+    Cyan = 8,
+    Orange = 9
 }
 
 [Serializable]
@@ -37,6 +51,7 @@ public class LevelData
     public int conveyorBeltCapacity = DefaultConveyorBeltCapacity;
     public int shooterSlotCount;
     public List<ShooterSlotData> shooterSlots = new List<ShooterSlotData>();
+    public List<ArrowColorChoice> levelColors = new List<ArrowColorChoice>();
     public List<VertexData> vertices = new List<VertexData>();
     public List<EdgeData> edges = new List<EdgeData>();
     public List<ArrowData> arrows = new List<ArrowData>();
@@ -179,9 +194,9 @@ public class LevelData
                         continue;
                     }
 
-                    if (shooter.colorNumber <= 0)
+                    if (shooter.GetColorIndex() < 0)
                     {
-                        Debug.LogError($"LevelData validation failed: shooter slot {slotIndex}, stack index {shooterIndex} has invalid colorNumber {shooter.colorNumber}.");
+                        Debug.LogError($"LevelData validation failed: shooter slot {slotIndex}, stack index {shooterIndex} has invalid color {shooter.color}.");
                         isValid = false;
                     }
 
@@ -683,12 +698,12 @@ public class ShooterSlotData
 [Serializable]
 public class ShooterData
 {
-    [Tooltip("1 = red, 2 = blue, 3 = green, 4 = yellow, 5 = pink, 6 = gray, 7 = purple, 8 = cyan, 9 = orange.")]
-    public int colorNumber = 1;
+    [FormerlySerializedAs("colorNumber")]
+    public ArrowColorChoice color = ArrowColorChoice.Red;
     public int ammoCapacity = 1;
 
     public int GetColorIndex()
     {
-        return Mathf.Max(0, colorNumber - 1);
+        return ArrowColorUtility.ToColorIndex(color);
     }
 }
