@@ -24,6 +24,18 @@ public class CameraManager : Singleton<CameraManager>
         SetOrthographicSizeForGrid(levelData.width, levelData.height, cellSize);
     }
 
+    public void ConfigureCameraForBounds(Vector2 center, int widthInCells, int heightInCells, float cellSize)
+    {
+        Camera camera = GetTargetCamera();
+        if (camera == null)
+        {
+            Debug.LogWarning("CameraManager.ConfigureCameraForBounds failed: no camera is available.");
+            return;
+        }
+
+        ConfigureCameraForBounds(camera, center, widthInCells, heightInCells, cellSize, gridPadding, minimumWorldPadding);
+    }
+
     public static bool TryConfigureMainCamera(LevelData levelData, float cellSize)
     {
         Camera camera = Camera.main;
@@ -33,6 +45,18 @@ public class CameraManager : Singleton<CameraManager>
         }
 
         ConfigureCameraForGrid(camera, levelData.width, levelData.height, cellSize, 1.25f, 0.75f);
+        return true;
+    }
+
+    public static bool TryConfigureMainCameraForBounds(Vector2 center, int widthInCells, int heightInCells, float cellSize)
+    {
+        Camera camera = Camera.main;
+        if (camera == null)
+        {
+            return false;
+        }
+
+        ConfigureCameraForBounds(camera, center, widthInCells, heightInCells, cellSize, 1.25f, 0.75f);
         return true;
     }
 
@@ -116,6 +140,37 @@ public class CameraManager : Singleton<CameraManager>
         float safePadding = Mathf.Max(Mathf.Max(0f, paddingCells) * safeCellSize, Mathf.Max(0f, minWorldPadding));
         float worldWidth = Mathf.Max(1, width) * safeCellSize + safePadding * 2f;
         float worldHeight = Mathf.Max(1, height) * safeCellSize + safePadding * 2f;
+        float sizeForHeight = worldHeight * 0.5f;
+        float sizeForWidth = worldWidth * 0.5f / aspect;
+        camera.orthographicSize = Mathf.Max(sizeForHeight, sizeForWidth);
+    }
+
+    private static void ConfigureCameraForBounds(
+        Camera camera,
+        Vector2 center,
+        int widthInCells,
+        int heightInCells,
+        float cellSize,
+        float paddingCells,
+        float minWorldPadding)
+    {
+        if (camera == null)
+        {
+            return;
+        }
+
+        camera.orthographic = true;
+
+        Vector3 position = camera.transform.position;
+        position.x = center.x;
+        position.y = center.y;
+        camera.transform.position = position;
+
+        float safeCellSize = Mathf.Max(0.01f, cellSize);
+        float aspect = Mathf.Max(0.01f, camera.aspect);
+        float safePadding = Mathf.Max(Mathf.Max(0f, paddingCells) * safeCellSize, Mathf.Max(0f, minWorldPadding));
+        float worldWidth = Mathf.Max(1, widthInCells) * safeCellSize + safePadding * 2f;
+        float worldHeight = Mathf.Max(1, heightInCells) * safeCellSize + safePadding * 2f;
         float sizeForHeight = worldHeight * 0.5f;
         float sizeForWidth = worldWidth * 0.5f / aspect;
         camera.orthographicSize = Mathf.Max(sizeForHeight, sizeForWidth);

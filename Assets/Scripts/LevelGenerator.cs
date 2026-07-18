@@ -45,6 +45,7 @@ public class LevelGenerator : MonoBehaviour
     private readonly List<GameObject> generatedArrowVisuals = new List<GameObject>();
     private Vector2 gridOrigin;
     private Dictionary<Vector2Int, ArrowVisualCellData> arrowVisualDataByPosition = new Dictionary<Vector2Int, ArrowVisualCellData>();
+    private Dictionary<int, Color> arrowColorById = new Dictionary<int, Color>();
     private Material lineMaterial;
     private int currentLevelIndex;
     private int currentLevelVariantIndex;
@@ -128,6 +129,15 @@ public class LevelGenerator : MonoBehaviour
             return false;
         }
 
+        if (HasSerializedArrowColorData(levelJson.text))
+        {
+            ArrowColorUtility.AssignMissingDistinctAdjacentColorIndices(levelData);
+        }
+        else
+        {
+            ArrowColorUtility.ReassignDistinctAdjacentColorIndices(levelData);
+        }
+
         if (!levelData.Validate())
         {
             Debug.LogError($"LevelGenerator found invalid level data in Resources/{resourcePath}.json.");
@@ -143,6 +153,11 @@ public class LevelGenerator : MonoBehaviour
     private bool DoesLevelResourceExist(int levelIndex, int levelVariantIndex)
     {
         return Resources.Load<TextAsset>(BuildVariantResourcePath(levelIndex, levelVariantIndex)) != null;
+    }
+
+    private static bool HasSerializedArrowColorData(string json)
+    {
+        return !string.IsNullOrWhiteSpace(json) && json.Contains("\"colorIndex\"");
     }
 
     private int FindHighestExistingVariantIndex(int levelIndex)
@@ -169,6 +184,8 @@ public class LevelGenerator : MonoBehaviour
             return;
         }
 
+        ArrowColorUtility.AssignMissingDistinctAdjacentColorIndices(levelData);
+
         if (!levelData.Validate())
         {
             Debug.LogError("LevelGenerator.GenerateLevel failed: LevelData is invalid.");
@@ -187,6 +204,7 @@ public class LevelGenerator : MonoBehaviour
         GameManager.SetRuntimeGridLayout(cellSize, gridOrigin);
         GameManager.Initialize(levelData);
         arrowVisualDataByPosition = BuildArrowVisualLookup(levelData);
+        arrowColorById = ArrowColorUtility.BuildArrowColorLookup(levelData, arrowBodyColor);
 
         for (int i = 0; i < levelData.vertices.Count; i++)
         {
@@ -201,11 +219,21 @@ public class LevelGenerator : MonoBehaviour
             CreateContinuousArrowVisuals(levelData);
         }
 
+        GridCellBounds playableBounds = CalculatePlayableGridBounds(levelData);
+        Vector2 cameraCenter = GridBoundsToWorldCenter(playableBounds);
         if (CameraManager.Instance != null)
         {
-            CameraManager.Instance.ConfigureCamera(levelData, cellSize);
+            CameraManager.Instance.ConfigureCameraForBounds(
+                cameraCenter,
+                playableBounds.Width,
+                playableBounds.Height,
+                cellSize);
         }
-        else if (!CameraManager.TryConfigureMainCamera(levelData, cellSize))
+        else if (!CameraManager.TryConfigureMainCameraForBounds(
+                     cameraCenter,
+                     playableBounds.Width,
+                     playableBounds.Height,
+                     cellSize))
         {
             Debug.LogWarning("LevelGenerator could not configure the camera because no CameraManager or Main Camera was found.");
         }
@@ -223,6 +251,7 @@ public class LevelGenerator : MonoBehaviour
 
         generatedTiles.Clear();
         arrowVisualDataByPosition.Clear();
+        arrowColorById.Clear();
 
         for (int i = generatedArrowVisuals.Count - 1; i >= 0; i--)
         {
@@ -618,6 +647,11 @@ public class LevelGenerator : MonoBehaviour
 
     private Color GetArrowColor(int arrowId, bool isTip)
     {
+        if (arrowColorById.TryGetValue(arrowId, out Color color))
+        {
+            return color;
+        }
+
         return isTip ? arrowTipColor : arrowBodyColor;
     }
 
@@ -821,6 +855,95 @@ public class LevelGenerator : MonoBehaviour
             -(height - 1) * cellSize * 0.5f);
     }
 
+    private GridCellBounds CalculatePlayableGridBounds(LevelData levelData)
+    {
+        GridCellBounds bounds = new GridCellBounds();
+        bool hasBounds = false;
+
+        if (levelData?.shapeCells != null && levelData.shapeCells.Count > 0)
+        {
+            for (int i = 0; i < levelData.shapeCells.Count; i++)
+            {
+                GridPositionData cell = levelData.shapeCells[i];
+                if (cell != null)
+                {
+                    ExpandGridBounds(ref bounds, ref hasBounds, cell.x, cell.y);
+                }
+            }
+        }
+
+        if (!hasBounds && levelData?.arrows != null)
+        {
+            for (int arrowIndex = 0; arrowIndex < levelData.arrows.Count; arrowIndex++)
+            {
+                ArrowData arrow = levelData.arrows[arrowIndex];
+                if (arrow?.occupiedCells == null)
+                {
+                    continue;
+                }
+
+                for (int cellIndex = 0; cellIndex < arrow.occupiedCells.Count; cellIndex++)
+                {
+                    GridPositionData cell = arrow.occupiedCells[cellIndex];
+                    if (cell != null)
+                    {
+                        ExpandGridBounds(ref bounds, ref hasBounds, cell.x, cell.y);
+                    }
+                }
+            }
+        }
+
+        if (!hasBounds && levelData?.vertices != null)
+        {
+            for (int i = 0; i < levelData.vertices.Count; i++)
+            {
+                VertexData vertex = levelData.vertices[i];
+                if (vertex != null && vertex.contentType != CellContentType.Empty)
+                {
+                    ExpandGridBounds(ref bounds, ref hasBounds, vertex.x, vertex.y);
+                }
+            }
+        }
+
+        if (hasBounds)
+        {
+            return bounds;
+        }
+
+        return new GridCellBounds
+        {
+            minX = 0,
+            maxX = Mathf.Max(0, (levelData?.width ?? 1) - 1),
+            minY = 0,
+            maxY = Mathf.Max(0, (levelData?.height ?? 1) - 1)
+        };
+    }
+
+    private static void ExpandGridBounds(ref GridCellBounds bounds, ref bool hasBounds, int x, int y)
+    {
+        if (!hasBounds)
+        {
+            bounds.minX = x;
+            bounds.maxX = x;
+            bounds.minY = y;
+            bounds.maxY = y;
+            hasBounds = true;
+            return;
+        }
+
+        bounds.minX = Mathf.Min(bounds.minX, x);
+        bounds.maxX = Mathf.Max(bounds.maxX, x);
+        bounds.minY = Mathf.Min(bounds.minY, y);
+        bounds.maxY = Mathf.Max(bounds.maxY, y);
+    }
+
+    private Vector2 GridBoundsToWorldCenter(GridCellBounds bounds)
+    {
+        return new Vector2(
+            gridOrigin.x + (bounds.minX + bounds.maxX) * 0.5f * cellSize,
+            gridOrigin.y + (bounds.minY + bounds.maxY) * 0.5f * cellSize);
+    }
+
     private static string NormalizeResourceFolder(string folder)
     {
         if (string.IsNullOrWhiteSpace(folder))
@@ -848,5 +971,16 @@ public class LevelGenerator : MonoBehaviour
     {
         public ArrowVisualPieceType pieceType;
         public float rotationZ;
+    }
+
+    private struct GridCellBounds
+    {
+        public int minX;
+        public int maxX;
+        public int minY;
+        public int maxY;
+
+        public int Width => Mathf.Max(1, maxX - minX + 1);
+        public int Height => Mathf.Max(1, maxY - minY + 1);
     }
 }

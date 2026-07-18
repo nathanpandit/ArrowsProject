@@ -10,9 +10,13 @@ public static class GameManager
     public static int SelectedArrowId { get; private set; } = -1;
     public static int Moves { get; private set; }
     public static int Lives { get; private set; }
+    public static int ConveyorBeltCapacity { get; private set; }
+    public static int ConveyorBeltUsedCapacity { get; private set; }
 
     private static readonly Dictionary<Vector2Int, Tile> tilesByPosition = new Dictionary<Vector2Int, Tile>();
     private static readonly Dictionary<int, List<GameObject>> runtimeArrowVisualsById = new Dictionary<int, List<GameObject>>();
+    private static readonly Dictionary<int, int> conveyorBeltCellCountByColorIndex = new Dictionary<int, int>();
+    private static readonly List<RuntimeShooterSlot> runtimeShooterSlots = new List<RuntimeShooterSlot>();
     private const float ArrowExitSpeed = 12f;
     private const float ArrowExitMinDuration = 0.25f;
     private const float ArrowExitMaxDuration = 1.4f;
@@ -35,6 +39,10 @@ public static class GameManager
         CurrentGridWidth = levelData.width;
         CurrentGridHeight = levelData.height;
         Lives = Mathf.Max(0, levelData.lives);
+        ConveyorBeltCapacity = Mathf.Max(1, levelData.GetConveyorBeltCapacity());
+        ConveyorBeltUsedCapacity = 0;
+        conveyorBeltCellCountByColorIndex.Clear();
+        InitializeRuntimeShooters(levelData);
         Moves = 0;
         SelectedArrowId = -1;
         levelEnded = false;
@@ -53,6 +61,10 @@ public static class GameManager
         CurrentGridHeight = 0;
         Moves = 0;
         Lives = 0;
+        ConveyorBeltCapacity = 0;
+        ConveyorBeltUsedCapacity = 0;
+        conveyorBeltCellCountByColorIndex.Clear();
+        runtimeShooterSlots.Clear();
         SelectedArrowId = -1;
         levelEnded = false;
     }
@@ -197,9 +209,20 @@ public static class GameManager
         if (!CanArrowLeaveMap(arrow))
         {
             ConsumeLifeForBlockedArrow(arrowId);
+            LogClickReport(new List<string> { "No shooter fired." });
             return false;
         }
 
+        if (!TryReserveConveyorBeltSpace(arrow, out string beltFailureReason))
+        {
+            EventManager.Instance?.TriggerInvalidMove();
+            Debug.LogWarning(beltFailureReason);
+            LogClickReport(new List<string> { "No shooter fired." });
+            return false;
+        }
+
+        List<string> clickReportLines = ProcessShooters();
+        LogClickReport(clickReportLines);
         ClearArrow(arrow);
         Moves++;
         EventManager.Instance?.TriggerMovesChanged(Moves);
@@ -211,6 +234,344 @@ public static class GameManager
         }
 
         return true;
+    }
+
+    private static bool TryReserveConveyorBeltSpace(ArrowData arrow, out string failureReason)
+    {
+        failureReason = string.Empty;
+        if (arrow == null)
+        {
+            failureReason = "Arrow cannot enter conveyor belt because it is missing.";
+            return false;
+        }
+
+        int arrowCellCount = GetArrowCellCount(arrow);
+        if (arrowCellCount <= 0)
+        {
+            failureReason = $"Arrow {arrow.arrowId} cannot enter conveyor belt because it has no cells.";
+            return false;
+        }
+
+        int remainingCapacity = Mathf.Max(0, ConveyorBeltCapacity - ConveyorBeltUsedCapacity);
+        if (arrowCellCount > remainingCapacity)
+        {
+            failureReason = $"Arrow {arrow.arrowId} cannot enter conveyor belt. Needs {arrowCellCount} capacity, remaining capacity is {remainingCapacity}/{ConveyorBeltCapacity}.";
+            return false;
+        }
+
+        int colorIndex = arrow.colorIndex >= 0 ? arrow.colorIndex : ArrowColorUtility.DefaultColorIndex;
+        if (!conveyorBeltCellCountByColorIndex.ContainsKey(colorIndex))
+        {
+            conveyorBeltCellCountByColorIndex.Add(colorIndex, 0);
+        }
+
+        conveyorBeltCellCountByColorIndex[colorIndex] += arrowCellCount;
+        ConveyorBeltUsedCapacity += arrowCellCount;
+        return true;
+    }
+
+    private static void InitializeRuntimeShooters(LevelData levelData)
+    {
+        runtimeShooterSlots.Clear();
+
+        int slotCount = Mathf.Max(0, levelData?.shooterSlotCount ?? 0);
+        for (int slotIndex = 0; slotIndex < slotCount; slotIndex++)
+        {
+            ShooterSlotData sourceSlot = levelData.shooterSlots != null && slotIndex < levelData.shooterSlots.Count
+                ? levelData.shooterSlots[slotIndex]
+                : null;
+
+            RuntimeShooterSlot runtimeSlot = new RuntimeShooterSlot();
+            if (sourceSlot?.shooters != null)
+            {
+                for (int shooterIndex = 0; shooterIndex < sourceSlot.shooters.Count; shooterIndex++)
+                {
+                    ShooterData sourceShooter = sourceSlot.shooters[shooterIndex];
+                    if (sourceShooter == null)
+                    {
+                        continue;
+                    }
+
+                    runtimeSlot.Shooters.Add(new RuntimeShooter
+                    {
+                        ColorIndex = sourceShooter.GetColorIndex(),
+                        AmmoCapacity = Mathf.Max(0, sourceShooter.ammoCapacity),
+                        RemainingAmmo = Mathf.Max(0, sourceShooter.ammoCapacity)
+                    });
+                }
+            }
+
+            AdvancePastEmptyShooters(runtimeSlot);
+            runtimeShooterSlots.Add(runtimeSlot);
+        }
+    }
+
+    private static List<string> ProcessShooters()
+    {
+        List<string> reportLines = new List<string>();
+        if (runtimeShooterSlots.Count == 0 || ConveyorBeltUsedCapacity <= 0)
+        {
+            reportLines.Add("No shooter fired.");
+            return reportLines;
+        }
+
+        int totalShotCount = 0;
+        int slotCount = runtimeShooterSlots.Count;
+        int[] pendingShotCountsBySlot = new int[slotCount];
+        RuntimeShooter[] pendingShootersBySlot = new RuntimeShooter[slotCount];
+        bool madeProgress;
+        do
+        {
+            madeProgress = false;
+            for (int slotIndex = 0; slotIndex < slotCount; slotIndex++)
+            {
+                RuntimeShooterSlot slot = runtimeShooterSlots[slotIndex];
+                RuntimeShooter shooter = GetActiveShooter(slot);
+                if (shooter != null &&
+                    shooter.RemainingAmmo > 0 &&
+                    TryConsumeConveyorBeltCell(shooter.ColorIndex))
+                {
+                    if (pendingShootersBySlot[slotIndex] != null && pendingShootersBySlot[slotIndex] != shooter)
+                    {
+                        FlushPendingShooterShot(reportLines, slotIndex, pendingShootersBySlot, pendingShotCountsBySlot);
+                    }
+
+                    pendingShootersBySlot[slotIndex] = shooter;
+                    pendingShotCountsBySlot[slotIndex]++;
+                    shooter.RemainingAmmo--;
+                    totalShotCount++;
+                    madeProgress = true;
+
+                    if (shooter.RemainingAmmo <= 0)
+                    {
+                        FlushPendingShooterShot(reportLines, slotIndex, pendingShootersBySlot, pendingShotCountsBySlot);
+                        slot.ActiveShooterIndex++;
+                        AdvancePastEmptyShooters(slot);
+
+                        RuntimeShooter nextShooter = GetActiveShooter(slot);
+                        if (nextShooter != null)
+                        {
+                            reportLines.Add($"Shooter in slot {slotIndex + 1} deactivated, next shooter activated: {GetDisplayColorName(nextShooter.ColorIndex)}, {nextShooter.RemainingAmmo} / {nextShooter.AmmoCapacity}.");
+                        }
+                        else
+                        {
+                            reportLines.Add($"Shooter in slot {slotIndex + 1} deactivated, no shooter remains.");
+                        }
+                    }
+                }
+            }
+        }
+        while (madeProgress && ConveyorBeltUsedCapacity > 0);
+
+        for (int slotIndex = 0; slotIndex < slotCount; slotIndex++)
+        {
+            FlushPendingShooterShot(reportLines, slotIndex, pendingShootersBySlot, pendingShotCountsBySlot);
+        }
+
+        if (totalShotCount == 0)
+        {
+            reportLines.Add("No shooter fired.");
+        }
+
+        return reportLines;
+    }
+
+    private static void FlushPendingShooterShot(
+        List<string> reportLines,
+        int slotIndex,
+        RuntimeShooter[] pendingShootersBySlot,
+        int[] pendingShotCountsBySlot)
+    {
+        if (reportLines == null ||
+            pendingShootersBySlot == null ||
+            pendingShotCountsBySlot == null ||
+            slotIndex < 0 ||
+            slotIndex >= pendingShootersBySlot.Length ||
+            slotIndex >= pendingShotCountsBySlot.Length)
+        {
+            return;
+        }
+
+        RuntimeShooter shooter = pendingShootersBySlot[slotIndex];
+        int shotCount = pendingShotCountsBySlot[slotIndex];
+        if (shooter == null || shotCount <= 0)
+        {
+            return;
+        }
+
+        reportLines.Add($"Shooter {slotIndex + 1} shot {shotCount} {ArrowColorUtility.GetColorName(shooter.ColorIndex)} cells on belt. Ammo: {shooter.RemainingAmmo} / {shooter.AmmoCapacity}");
+        pendingShootersBySlot[slotIndex] = null;
+        pendingShotCountsBySlot[slotIndex] = 0;
+    }
+
+    private static bool TryConsumeConveyorBeltCell(int colorIndex)
+    {
+        if (!conveyorBeltCellCountByColorIndex.TryGetValue(colorIndex, out int cellCount) || cellCount <= 0)
+        {
+            return false;
+        }
+
+        cellCount--;
+        ConveyorBeltUsedCapacity = Mathf.Max(0, ConveyorBeltUsedCapacity - 1);
+
+        if (cellCount <= 0)
+        {
+            conveyorBeltCellCountByColorIndex.Remove(colorIndex);
+        }
+        else
+        {
+            conveyorBeltCellCountByColorIndex[colorIndex] = cellCount;
+        }
+
+        return true;
+    }
+
+    private static RuntimeShooter GetActiveShooter(RuntimeShooterSlot slot)
+    {
+        if (slot == null)
+        {
+            return null;
+        }
+
+        AdvancePastEmptyShooters(slot);
+        return slot.ActiveShooterIndex >= 0 && slot.ActiveShooterIndex < slot.Shooters.Count
+            ? slot.Shooters[slot.ActiveShooterIndex]
+            : null;
+    }
+
+    private static void AdvancePastEmptyShooters(RuntimeShooterSlot slot)
+    {
+        if (slot == null)
+        {
+            return;
+        }
+
+        while (slot.ActiveShooterIndex < slot.Shooters.Count &&
+               (slot.Shooters[slot.ActiveShooterIndex] == null || slot.Shooters[slot.ActiveShooterIndex].RemainingAmmo <= 0))
+        {
+            slot.ActiveShooterIndex++;
+        }
+    }
+
+    private static int GetArrowCellCount(ArrowData arrow)
+    {
+        if (arrow?.occupiedCells != null && arrow.occupiedCells.Count > 0)
+        {
+            return arrow.occupiedCells.Count;
+        }
+
+        return arrow != null ? Mathf.Max(0, arrow.length) : 0;
+    }
+
+    private static void LogClickReport(List<string> actionLines)
+    {
+        List<string> reportLines = new List<string>();
+        if (actionLines != null)
+        {
+            for (int i = 0; i < actionLines.Count; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(actionLines[i]))
+                {
+                    reportLines.Add(actionLines[i]);
+                }
+            }
+        }
+
+        AddActiveShooterSummaryLines(reportLines);
+        reportLines.Add(BuildBeltOccupiedLine());
+
+        for (int i = 0; i < reportLines.Count; i++)
+        {
+            Debug.Log(reportLines[i]);
+        }
+    }
+
+    private static void AddActiveShooterSummaryLines(List<string> reportLines)
+    {
+        if (reportLines == null)
+        {
+            return;
+        }
+
+        if (runtimeShooterSlots.Count == 0)
+        {
+            reportLines.Add("No shooter slots.");
+            return;
+        }
+
+        for (int slotIndex = 0; slotIndex < runtimeShooterSlots.Count; slotIndex++)
+        {
+            RuntimeShooter shooter = GetActiveShooter(runtimeShooterSlots[slotIndex]);
+            if (shooter == null)
+            {
+                reportLines.Add($"Shooter {slotIndex + 1} : Empty");
+                continue;
+            }
+
+            reportLines.Add($"Shooter {slotIndex + 1} : {GetDisplayColorName(shooter.ColorIndex)}, {shooter.RemainingAmmo} / {shooter.AmmoCapacity}");
+        }
+    }
+
+    private static string BuildBeltOccupiedLine()
+    {
+        if (ConveyorBeltUsedCapacity <= 0 || conveyorBeltCellCountByColorIndex.Count == 0)
+        {
+            return "Belt occupied by 0 cells.";
+        }
+
+        List<int> colorIndices = new List<int>(conveyorBeltCellCountByColorIndex.Keys);
+        colorIndices.Sort();
+
+        List<string> parts = new List<string>();
+        for (int i = 0; i < colorIndices.Count; i++)
+        {
+            int colorIndex = colorIndices[i];
+            int cellCount = conveyorBeltCellCountByColorIndex[colorIndex];
+            if (cellCount <= 0)
+            {
+                continue;
+            }
+
+            parts.Add($"{cellCount} {ArrowColorUtility.GetColorName(colorIndex)} cells");
+        }
+
+        return parts.Count == 0
+            ? "Belt occupied by 0 cells."
+            : $"Belt occupied by {JoinHumanReadable(parts)}.";
+    }
+
+    private static string GetDisplayColorName(int colorIndex)
+    {
+        string colorName = ArrowColorUtility.GetColorName(colorIndex);
+        return string.IsNullOrEmpty(colorName)
+            ? colorName
+            : colorName.Substring(0, 1).ToUpperInvariant() + colorName.Substring(1);
+    }
+
+    private static string JoinHumanReadable(List<string> parts)
+    {
+        if (parts == null || parts.Count == 0)
+        {
+            return "empty";
+        }
+
+        if (parts.Count == 1)
+        {
+            return parts[0];
+        }
+
+        if (parts.Count == 2)
+        {
+            return $"{parts[0]} and {parts[1]}";
+        }
+
+        string result = parts[0];
+        for (int i = 1; i < parts.Count; i++)
+        {
+            result += i == parts.Count - 1 ? $", and {parts[i]}" : $", {parts[i]}";
+        }
+
+        return result;
     }
 
     public static bool CheckWinCondition()
@@ -382,7 +743,6 @@ public static class GameManager
             DestroyRuntimeArrowVisuals(arrowId);
         }
 
-        Debug.Log($"Arrow {arrowId} cleared.");
     }
 
     private static void ClearArrowCell(int arrowId, int x, int y)
@@ -881,5 +1241,18 @@ public static class GameManager
             default:
                 return Vector2Int.zero;
         }
+    }
+
+    private class RuntimeShooterSlot
+    {
+        public int ActiveShooterIndex;
+        public List<RuntimeShooter> Shooters { get; } = new List<RuntimeShooter>();
+    }
+
+    private class RuntimeShooter
+    {
+        public int ColorIndex;
+        public int AmmoCapacity;
+        public int RemainingAmmo;
     }
 }

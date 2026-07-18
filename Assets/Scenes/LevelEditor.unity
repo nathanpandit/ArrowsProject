@@ -363,13 +363,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d7c57c2cb7df7c439dd607636e1bbdb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LevelEditor
-  gridSize: 30
-  levelIndex: 41
-  minArrowCount: 50
-  maxArrowCount: 80
+  gridSize: 8
+  levelIndex: 44
+  minArrowCount: 10
+  maxArrowCount: 40
   minArrowLength: 2
   maxArrowLength: 25
   lives: 3
+  conveyorBeltCapacity: 40
+  shooterSlotCount: 2
+  shooterSlots:
+  - shooters: []
+  - shooters: []
   cellSize: 1
   originOffset: {x: 0, y: 0}
   gridRoot: {fileID: 498930730}
@@ -399,7 +404,7 @@ MonoBehaviour:
   useRandomSeed: 0
   randomSeed: 12345
   maxSearchIterations: 5000000
-  maxGenerationSeconds: 60
+  maxGenerationSeconds: 20
   maxCandidatesPerSearchState: 512
 --- !u!4 &2137619112
 Transform:

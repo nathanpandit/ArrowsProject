@@ -21,6 +21,8 @@ public enum ArrowDirection
 [Serializable]
 public class LevelData
 {
+    public const int DefaultConveyorBeltCapacity = 50;
+
     public int levelIndex;
     public int levelVariantIndex;
     public int gridSize;
@@ -32,6 +34,9 @@ public class LevelData
     public int minArrowLength;
     public int maxArrowLength;
     public int lives;
+    public int conveyorBeltCapacity = DefaultConveyorBeltCapacity;
+    public int shooterSlotCount;
+    public List<ShooterSlotData> shooterSlots = new List<ShooterSlotData>();
     public List<VertexData> vertices = new List<VertexData>();
     public List<EdgeData> edges = new List<EdgeData>();
     public List<ArrowData> arrows = new List<ArrowData>();
@@ -68,6 +73,11 @@ public class LevelData
         }
 
         return null;
+    }
+
+    public int GetConveyorBeltCapacity()
+    {
+        return conveyorBeltCapacity > 0 ? conveyorBeltCapacity : DefaultConveyorBeltCapacity;
     }
 
     private static ArrowDirection DirectionFromDelta(int deltaX, int deltaY)
@@ -115,6 +125,73 @@ public class LevelData
         {
             Debug.LogError("LevelData validation failed: targetArrowCount cannot be negative.");
             isValid = false;
+        }
+
+        if (conveyorBeltCapacity < 0)
+        {
+            Debug.LogError("LevelData validation failed: conveyorBeltCapacity cannot be negative.");
+            isValid = false;
+        }
+
+        if (shooterSlotCount < 0)
+        {
+            Debug.LogError("LevelData validation failed: shooterSlotCount cannot be negative.");
+            isValid = false;
+        }
+
+        if (shooterSlots == null)
+        {
+            Debug.LogError("LevelData validation failed: shooterSlots list is null.");
+            isValid = false;
+        }
+        else
+        {
+            if (shooterSlots.Count < shooterSlotCount)
+            {
+                Debug.LogError($"LevelData validation failed: shooterSlotCount is {shooterSlotCount}, but only {shooterSlots.Count} shooter slots are defined.");
+                isValid = false;
+            }
+
+            for (int slotIndex = 0; slotIndex < shooterSlots.Count; slotIndex++)
+            {
+                ShooterSlotData slot = shooterSlots[slotIndex];
+                if (slot == null)
+                {
+                    Debug.LogError($"LevelData validation failed: shooter slot {slotIndex} is null.");
+                    isValid = false;
+                    continue;
+                }
+
+                if (slot.shooters == null)
+                {
+                    Debug.LogError($"LevelData validation failed: shooter slot {slotIndex} has no shooter stack list.");
+                    isValid = false;
+                    continue;
+                }
+
+                for (int shooterIndex = 0; shooterIndex < slot.shooters.Count; shooterIndex++)
+                {
+                    ShooterData shooter = slot.shooters[shooterIndex];
+                    if (shooter == null)
+                    {
+                        Debug.LogError($"LevelData validation failed: shooter slot {slotIndex}, stack index {shooterIndex} is null.");
+                        isValid = false;
+                        continue;
+                    }
+
+                    if (shooter.colorNumber <= 0)
+                    {
+                        Debug.LogError($"LevelData validation failed: shooter slot {slotIndex}, stack index {shooterIndex} has invalid colorNumber {shooter.colorNumber}.");
+                        isValid = false;
+                    }
+
+                    if (shooter.ammoCapacity < 0)
+                    {
+                        Debug.LogError($"LevelData validation failed: shooter slot {slotIndex}, stack index {shooterIndex} has negative ammoCapacity.");
+                        isValid = false;
+                    }
+                }
+            }
         }
 
         if (levelVariantIndex < 0)
@@ -555,6 +632,7 @@ public class EdgeData
 public class ArrowData
 {
     public int arrowId;
+    public int colorIndex = -1;
     public int length;
     public List<GridPositionData> occupiedCells = new List<GridPositionData>();
     public GridPositionData tipCell;
@@ -593,5 +671,24 @@ public class DependencyData
     {
         this.blockerArrowId = blockerArrowId;
         this.blockedArrowId = blockedArrowId;
+    }
+}
+
+[Serializable]
+public class ShooterSlotData
+{
+    public List<ShooterData> shooters = new List<ShooterData>();
+}
+
+[Serializable]
+public class ShooterData
+{
+    [Tooltip("1 = red, 2 = blue, 3 = green, 4 = yellow, 5 = pink, 6 = gray, 7 = purple, 8 = cyan, 9 = orange.")]
+    public int colorNumber = 1;
+    public int ammoCapacity = 1;
+
+    public int GetColorIndex()
+    {
+        return Mathf.Max(0, colorNumber - 1);
     }
 }

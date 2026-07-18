@@ -103,20 +103,30 @@ public class InputManager : MonoBehaviour
 
         if (levelEditor.HasDisplayedGeneratedLevel)
         {
-            if (WasPrimaryTouchPressedThisFrame())
+            if (IsPrimaryTouchPressed())
             {
                 levelEditor.HandlePrimaryPaintInput(ScreenToWorld(Touchscreen.current.primaryTouch.position.ReadValue()));
                 handledPrimaryInput = true;
             }
 
-            if (!handledPrimaryInput && WasLeftMousePressedThisFrame())
+            bool leftMousePressed = IsLeftMousePressed();
+            bool rightMousePressed = Mouse.current != null && Mouse.current.rightButton.isPressed;
+            bool rightMousePressedThisFrame = rightMousePressed && !rightMouseWasPressed;
+            rightMouseWasPressed = rightMousePressed;
+
+            if (!handledPrimaryInput && leftMousePressed)
             {
                 levelEditor.HandlePrimaryPaintInput(ScreenToWorld(Mouse.current.position.ReadValue()));
             }
 
-            if (WasRightMousePressedThisFrame())
+            if (rightMousePressedThisFrame)
             {
                 levelEditor.HandleSecondaryPaintInput(ScreenToWorld(Mouse.current.position.ReadValue()));
+            }
+
+            if (!handledPrimaryInput && !leftMousePressed && !rightMousePressed)
+            {
+                levelEditor.EndPaintDrag();
             }
         }
         else
@@ -147,6 +157,18 @@ public class InputManager : MonoBehaviour
         }
 
         Keyboard keyboard = Keyboard.current;
+        if (keyboard != null)
+        {
+            for (int numberKey = 1; numberKey <= ArrowColorUtility.ManualColorCount; numberKey++)
+            {
+                if (WasNumberKeyPressedThisFrame(keyboard, numberKey))
+                {
+                    levelEditor.HandleArrowColorShortcut(numberKey);
+                    break;
+                }
+            }
+        }
+
         if (keyboard != null && keyboard.gKey.wasPressedThisFrame)
         {
             levelEditor.HandleGenerateShortcut();
@@ -282,5 +304,37 @@ public class InputManager : MonoBehaviour
         bool isPressed = Touchscreen.current.primaryTouch.press.isPressed;
         primaryTouchWasPressed = isPressed;
         return isPressed;
+    }
+
+    private static bool WasNumberKeyPressedThisFrame(Keyboard keyboard, int numberKey)
+    {
+        if (keyboard == null)
+        {
+            return false;
+        }
+
+        switch (numberKey)
+        {
+            case 1:
+                return keyboard.digit1Key.wasPressedThisFrame || keyboard.numpad1Key.wasPressedThisFrame;
+            case 2:
+                return keyboard.digit2Key.wasPressedThisFrame || keyboard.numpad2Key.wasPressedThisFrame;
+            case 3:
+                return keyboard.digit3Key.wasPressedThisFrame || keyboard.numpad3Key.wasPressedThisFrame;
+            case 4:
+                return keyboard.digit4Key.wasPressedThisFrame || keyboard.numpad4Key.wasPressedThisFrame;
+            case 5:
+                return keyboard.digit5Key.wasPressedThisFrame || keyboard.numpad5Key.wasPressedThisFrame;
+            case 6:
+                return keyboard.digit6Key.wasPressedThisFrame || keyboard.numpad6Key.wasPressedThisFrame;
+            case 7:
+                return keyboard.digit7Key.wasPressedThisFrame || keyboard.numpad7Key.wasPressedThisFrame;
+            case 8:
+                return keyboard.digit8Key.wasPressedThisFrame || keyboard.numpad8Key.wasPressedThisFrame;
+            case 9:
+                return keyboard.digit9Key.wasPressedThisFrame || keyboard.numpad9Key.wasPressedThisFrame;
+            default:
+                return false;
+        }
     }
 }
